@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from environs import env
+
+env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,10 +25,10 @@ AUTH_USER_MODEL = "user.User"
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-c$j&p1&^n3#0-_jrj7bms%yn_as$uz9a*tym9w@d-nw6^2t86h'
+SECRET_KEY = env('DJANGO_SECRET_KEY','django-insecure-c$j&p1&^n3#0-_jrj7bms%yn_as$uz9a*tym9w@d-nw6^2t86h')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DJANGO_DEBUG', True)
 
 ALLOWED_HOSTS = []
 
@@ -76,8 +79,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DJANGO_DB_NAME','voteoff'),
+        'HOST': env('DJANGO_DB_HOST','localhost'),
+        'PORT': env('DJANGO_DB_PORT',15432),
+        'USER': env('DJANGO_DB_USER', 'voteoff'),
+        'PASSWORD': env('DJANGO_DB_PASSWORD','voteoff'),
     }
 }
 
