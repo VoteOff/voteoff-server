@@ -3,6 +3,8 @@ from django.db import models
 from django.db.models import UniqueConstraint
 
 
+
+
 class Event(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -13,14 +15,11 @@ class Event(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     closed = models.DateTimeField(null=True)
 
-    RANKED_CHOICE = "RC"
-    PLURALITY = "PL"
-    ELECTORAL_SYSTEM_CHOICES = {
-        RANKED_CHOICE: "Ranked Choice",
-        PLURALITY: "Plurality",
-    }
+    class ElectoralSystem(models.TextChoices):
+        RANKED_CHOICE = "RC", "Ranked Choice"
+        PLURALITY = "PL", "Plurality"
 
-    electoral_system = models.CharField(max_length=2, choices=ELECTORAL_SYSTEM_CHOICES)
+    electoral_system = models.CharField(max_length=2, choices=ElectoralSystem)
 
 
 class Ballot(models.Model):
