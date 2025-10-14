@@ -2,9 +2,9 @@ from datetime import datetime
 from typing import List
 
 from django.http import HttpRequest
-from ninja import Router
-from ninja.errors import AuthorizationError
-from .models import Event
+from ninja import Router, Query
+from ninja.errors import AuthorizationError, ValidationError
+from .models import Event, Ballot
 from django.shortcuts import get_object_or_404
 from ninja import Schema
 
@@ -54,3 +54,40 @@ def open_event(request: HttpRequest, event_id: str, payload: TokenBody):
 
     event.closed = None
     event.save()
+
+
+# Ballots
+
+@router.post("/event/{event_id}/create-ballot")
+def create_ballot(request: HttpRequest, event_id: str, voter_name: Query[str]):
+    event = get_object_or_404(Event, pk=event_id)
+    ballot = Ballot.objects.create(event=event, voter_name=voter_name)
+    return {'ballot_id': ballot.id, 'ballot_token': ballot.token }
+
+class BallotSubmission(Schema):
+    token: str
+    vote: str | List[str]
+
+@router.post('/ballot/{ballot_id}/submit')
+def submit_ballot(request: HttpRequest, ballot_id: int, payload: BallotSubmission):
+    ballot = get_object_or_404(Ballot, pk=ballot_id)
+    if payload.token != str(ballot.token):
+        raise AuthorizationError
+
+    # Format Validation
+
+    if ballot.event.electoral_system == Event.ElectoralSystem.PLURALITY:
+        if not isinstance(payload.vote, str):
+            raise ValidationError("Ballot format does not match electoral system.")
+        if payload.vote not in ballot.event.choices:
+            raise ValidationError("Invalid candidate")
+
+    elif ballot.event.electoral_system == Event.ElectoralSystem.RANKED_CHOICE:
+        if not isinstance(payload.vote, List):
+            raise ValidationError("Ballot format does not match electoral system.")
+        for choice in payload.vote:
+            if choice not in ballot.event.choices:
+                raise ValidationError("Invalid candidate")
+
+    ballot.vote = payload.vote
+    ballot.submitted = datetime.now()
