@@ -6,10 +6,8 @@ from django.db.models import UniqueConstraint
 
 
 class Event(models.Model):
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
-    token = models.UUIDField(default=uuid.uuid4, editable=False)
+    share_token = models.UUIDField(default=uuid.uuid4, editable=False)
+    host_token = models.UUIDField(default=uuid.uuid4, editable=False)
     name = models.CharField()
     choices = models.JSONField()
     created = models.DateTimeField(auto_now_add=True)

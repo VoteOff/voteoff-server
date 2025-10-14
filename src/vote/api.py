@@ -25,7 +25,7 @@ class EventDetails(Schema):
 
 
 class TokenBody(Schema):
-    token: str
+    host_token: str
 
 
 @router.post("/event/create")
@@ -35,11 +35,12 @@ def create_event(request: HttpRequest, payload: EventCreation):
         choices=payload.choices,
         electoral_system=payload.electoral_system.value,
     )
-    return {"id": event.id, "event_token": event.token}
+    return {"id": event.id, "event_token": event.host_token}
 
 
 @router.get("/event/{event_id}", response=EventDetails)
 def read_event(request: HttpRequest, event_id: str):
+    # TODO Must provide either share_token or host_token
     return get_object_or_404(Event, pk=event_id)
 
 
@@ -47,7 +48,7 @@ def read_event(request: HttpRequest, event_id: str):
 def close_event(request: HttpRequest, event_id: str, payload: TokenBody):
     event = get_object_or_404(Event, pk=event_id)
 
-    if payload.token != str(event.token):  # event.token is <class 'uuid.UUID'>
+    if payload.host_token != str(event.host_token):  # event.token is <class 'uuid.UUID'>
         raise AuthorizationError
 
     event.closed = datetime.now()
@@ -58,7 +59,7 @@ def close_event(request: HttpRequest, event_id: str, payload: TokenBody):
 def open_event(request: HttpRequest, event_id: str, payload: TokenBody):
     event = get_object_or_404(Event, pk=event_id)
 
-    if payload.token != str(event.token):  # event.token is <class 'uuid.UUID'>
+    if payload.host_token != str(event.host_token):  # event.token is <class 'uuid.UUID'>
         raise AuthorizationError
 
     event.closed = None
