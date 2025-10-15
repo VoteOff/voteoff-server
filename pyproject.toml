@@ -12,6 +12,7 @@ dependencies = [
     "django-ninja (>=1.4.3,<2.0.0)",
     "environs (>=14.3.0,<15.0.0)",
     "psycopg (>=3.2.10,<4.0.0)",
+    "black (>=25.9.0,<26.0.0)",
 ]
 
 [tool.poetry]
