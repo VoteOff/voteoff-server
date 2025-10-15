@@ -26,6 +26,7 @@ class Ballot(models.Model):
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     voter_name = models.CharField()
+    created = models.DateTimeField(auto_now_add=True)
     vote = models.JSONField(null=True)
     submitted = models.DateTimeField(null=True)
 

@@ -88,6 +88,19 @@ def open_event(request: HttpRequest, event_id: str, payload: TokenBody):
     event.save()
 
 
+@router.get("/event/{event_id}/ballot-statuses")
+def get_ballot_statuses(request: HttpRequest, event_id: str, host_token: str):
+    event = get_object_or_404(Event, pk=event_id)
+
+    if host_token != str(event.host_token):
+        raise AuthorizationError
+
+    return {
+        'pending': [b.voter_name for b in event.ballot_set.filter(submitted__isnull=True).order_by('created')],
+        'submitted': [b.voter_name for b in event.ballot_set.filter(submitted__isnull=False).order_by('submitted')]
+    }
+
+
 # Ballots
 
 
@@ -99,6 +112,8 @@ def create_ballot(
 
     if share_token != str(event.share_token):
         raise AuthorizationError
+
+    # TODO better handling of name duplicates
 
     ballot = Ballot.objects.create(event=event, voter_name=voter_name)
     return {"ballot_id": ballot.id, "ballot_token": ballot.token}
@@ -132,3 +147,5 @@ def submit_ballot(request: HttpRequest, ballot_id: int, payload: BallotSubmissio
 
     ballot.vote = payload.vote
     ballot.submitted = datetime.now()
+
+
