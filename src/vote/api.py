@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from ninja import Router
 from ninja.errors import AuthorizationError, ValidationError
 from .models import Event, Ballot
@@ -17,6 +17,12 @@ class EventCreation(Schema):
     electoral_system: Event.ElectoralSystem
 
 
+class EventCreationResponse(Schema):
+    id: int
+    host_token: str
+    share_token: str
+
+
 class EventDetails(Schema):
     name: str
     choices: List[str]
@@ -28,24 +34,25 @@ class TokenBody(Schema):
     host_token: str
 
 
-@router.post("/event/create")
-def create_event(request: HttpRequest, payload: EventCreation):
+@router.post("/event/create", response={201: EventCreationResponse} )
+def create_event(
+    request: HttpRequest,
+    payload: EventCreation
+):
     event = Event.objects.create(
         name=payload.name,
         choices=payload.choices,
         electoral_system=payload.electoral_system.value,
     )
-    return {
+    return 201, {
         "id": event.id,
-        "host_token": event.host_token,
-        "share_token": event.share_token,
+        "host_token": str(event.host_token),
+        "share_token": str(event.share_token),
     }
 
 
 @router.get("/event/{event_id}", response=EventDetails)
 def read_event(request, event_id: int, host_token: str = None, share_token: str = None):
-    # TODO fix optional query parameters, currently not working
-
     event = get_object_or_404(Event, pk=event_id)
 
     # Must provide a valid host_token or share_token
