@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from django.http import HttpRequest
-from ninja import Router, Query
+from ninja import Router
 from ninja.errors import AuthorizationError, ValidationError
 from .models import Event, Ballot
 from django.shortcuts import get_object_or_404
@@ -35,20 +35,35 @@ def create_event(request: HttpRequest, payload: EventCreation):
         choices=payload.choices,
         electoral_system=payload.electoral_system.value,
     )
-    return {"id": event.id, "event_token": event.host_token}
+    return {
+        "id": event.id,
+        "host_token": event.host_token,
+        "share_token": event.share_token,
+    }
 
 
 @router.get("/event/{event_id}", response=EventDetails)
-def read_event(request: HttpRequest, event_id: str):
-    # TODO Must provide either share_token or host_token
-    return get_object_or_404(Event, pk=event_id)
+def read_event(request, event_id: int, host_token: str = None, share_token: str = None):
+    # TODO fix optional query parameters, currently not working
+
+    event = get_object_or_404(Event, pk=event_id)
+
+    # Must provide a valid host_token or share_token
+    if share_token is None and host_token is None:
+        raise AuthorizationError
+    if share_token is not None and share_token != str(event.share_token):
+        raise AuthorizationError
+    if host_token is not None and host_token != str(event.host_token):
+        raise AuthorizationError
+
+    return event
 
 
 @router.post("/event/{event_id}/close")
 def close_event(request: HttpRequest, event_id: str, payload: TokenBody):
     event = get_object_or_404(Event, pk=event_id)
 
-    if payload.host_token != str(event.host_token):  # event.token is <class 'uuid.UUID'>
+    if payload.host_token != str(event.host_token):
         raise AuthorizationError
 
     event.closed = datetime.now()
@@ -59,7 +74,7 @@ def close_event(request: HttpRequest, event_id: str, payload: TokenBody):
 def open_event(request: HttpRequest, event_id: str, payload: TokenBody):
     event = get_object_or_404(Event, pk=event_id)
 
-    if payload.host_token != str(event.host_token):  # event.token is <class 'uuid.UUID'>
+    if payload.host_token != str(event.host_token):
         raise AuthorizationError
 
     event.closed = None
@@ -70,8 +85,14 @@ def open_event(request: HttpRequest, event_id: str, payload: TokenBody):
 
 
 @router.post("/event/{event_id}/create-ballot")
-def create_ballot(request: HttpRequest, event_id: str, voter_name: Query[str]):
+def create_ballot(
+    request: HttpRequest, event_id: str, voter_name: str, share_token: str
+):
     event = get_object_or_404(Event, pk=event_id)
+
+    if share_token != str(event.share_token):
+        raise AuthorizationError
+
     ballot = Ballot.objects.create(event=event, voter_name=voter_name)
     return {"ballot_id": ballot.id, "ballot_token": ballot.token}
 
