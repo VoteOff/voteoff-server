@@ -83,8 +83,16 @@ def get_ballot_statuses(request: HttpRequest, event_id: str, host_token: str):
         raise AuthorizationError
 
     return {
-        'pending': [b.voter_name for b in event.ballot_set.filter(submitted__isnull=True).order_by('created')],
-        'submitted': [b.voter_name for b in event.ballot_set.filter(submitted__isnull=False).order_by('submitted')]
+        "pending": [
+            b.voter_name
+            for b in event.ballot_set.filter(submitted__isnull=True).order_by("created")
+        ],
+        "submitted": [
+            b.voter_name
+            for b in event.ballot_set.filter(submitted__isnull=False).order_by(
+                "submitted"
+            )
+        ],
     }
 
 
@@ -121,12 +129,12 @@ class BallotSubmission(Schema):
 
 
 @router.post("/ballot/{ballot_id}/submit")
-def submit_ballot(request: HttpRequest, ballot_id: int, token: str, payload: BallotSubmission):
+def submit_ballot(
+    request: HttpRequest, ballot_id: int, token: str, payload: BallotSubmission
+):
     ballot = get_object_or_404(Ballot, pk=ballot_id)
     if token != str(ballot.token):
         raise AuthorizationError
 
     ballot.vote = payload.vote
     ballot.submitted = datetime.now()
-
-

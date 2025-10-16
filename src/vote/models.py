@@ -3,8 +3,6 @@ from django.db import models
 from django.db.models import UniqueConstraint
 
 
-
-
 class Event(models.Model):
     share_token = models.UUIDField(default=uuid.uuid4, editable=False)
     host_token = models.UUIDField(default=uuid.uuid4, editable=False)
@@ -21,7 +19,6 @@ class Event(models.Model):
 
 
 class Ballot(models.Model):
-
     token = models.UUIDField(default=uuid.uuid4, editable=False)
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
@@ -32,6 +29,7 @@ class Ballot(models.Model):
 
     class Meta:
         constraints = [
-            UniqueConstraint(fields=['voter_name', 'event'], name='unique_voter_names_in_event'),
+            UniqueConstraint(
+                fields=["voter_name", "event"], name="unique_voter_names_in_event"
+            ),
         ]
-
