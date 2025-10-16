@@ -88,6 +88,20 @@ class BallotTestCase(TestCase):
         )
         self.ballot = Ballot.objects.create(event=self.event, voter_name="Becky")
 
+    def test_ballot_creation(self):
+        response = self.client.post(
+            f"/event/{self.event.id}/create-ballot",
+            query_params={"voter_name": "Don", 'share_token': str(self.event.share_token)},
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_ballot_creation_with_duplicate_name(self):
+        response = self.client.post(
+            f"/event/{self.event.id}/create-ballot",
+            query_params={"voter_name": "Becky", 'share_token': str(self.event.share_token)},
+        )
+        self.assertEqual(response.status_code, 422)
+
     def test_ballot_submission(self):
         response = self.client.post(
             f"/ballot/{self.ballot.id}/submit",
