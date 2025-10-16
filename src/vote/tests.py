@@ -1,3 +1,5 @@
+from datetime import datetime, UTC
+
 from django.test import TestCase, Client
 from ninja.testing import TestClient
 from .models import Event, Ballot
@@ -29,13 +31,8 @@ class EventTestCase(TestCase):
         self.assertEqual(response.status_code, 201)
 
     def test_read_event(self):
-        event = Event.objects.create(
-            name="Big Cookoff",
-            choices=["Tom's Texas Chili", "Jim's Vegan Chili", "Ed's Fusion Chili"],
-            electoral_system=Event.ElectoralSystem.PLURALITY,
-        )
         response = self.client.get(
-            f"/event/{event.id}", query_params={"host_token": str(event.host_token)}
+            f"/event/{self.event.id}", query_params={"host_token": str(self.event.host_token)}
         )
         self.assertEqual(response.status_code, 200)
 
@@ -49,6 +46,34 @@ class EventTestCase(TestCase):
             f"/event/{event.id}"
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_get_ballot_statuses(self):
+        Ballot.objects.create(event=self.event, voter_name="Ned", submitted=datetime.now(tz=UTC))
+        Ballot.objects.create(event=self.event, voter_name="Ted")
+
+        response = self.client.get(f"/event/{self.event.id}/ballot-statuses", query_params={"host_token": str(self.event.host_token)})
+
+        self.assertEqual(response.data, {'pending': ['Ted'], 'submitted': ['Ned']})
+
+
+    def test_get_ballot_results(self):
+        votes = [
+            ('Geoff', 'Vote data'),
+            ('Lance', ['Could', 'be', 'any', 'format']),
+            ('Paul', {"We": 10, "don't": 5, "care": 0})
+        ]
+        vote_data = [v[1] for v in votes]
+
+        for name, data in votes:
+            Ballot.objects.create(event=self.event, voter_name=name, vote=data)
+
+        response = self.client.get(f"/event/{self.event.id}/ballot-results",
+                               query_params={"host_token": str(self.event.host_token)})
+
+        self.assertListEqual(vote_data, response.data)
+
+
+
 
 
 class BallotTestCase(TestCase):
