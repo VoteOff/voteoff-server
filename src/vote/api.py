@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Any
 
 from django.db import IntegrityError
@@ -76,6 +76,9 @@ def open_event(request: HttpRequest, event_id: str, host_token: str):
     event.save()
 
 
+# Ballots
+
+
 @router.get("/event/{event_id}/ballot-statuses")
 def get_ballot_statuses(request: HttpRequest, event_id: str, host_token: str):
     event = get_object_or_404(Event, pk=event_id)
@@ -107,9 +110,6 @@ def get_ballot_results(request: HttpRequest, event_id: str, host_token: str):
     return [b.vote for b in event.ballot_set.all()]
 
 
-# Ballots
-
-
 @router.post("/event/{event_id}/create-ballot")
 def create_ballot(
     request: HttpRequest, event_id: str, voter_name: str, share_token: str
@@ -127,7 +127,6 @@ def create_ballot(
         else:
             raise err
 
-
     return {"ballot_id": ballot.id, "ballot_token": ballot.token}
 
 
@@ -143,5 +142,9 @@ def submit_ballot(
     if token != str(ballot.token):
         raise AuthorizationError
 
+    if ballot.submitted is not None:
+        raise AuthorizationError
+
     ballot.vote = payload.vote
-    ballot.submitted = datetime.now()
+    ballot.submitted = datetime.now(tz=UTC)
+    ballot.save()

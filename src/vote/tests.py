@@ -91,14 +91,20 @@ class BallotTestCase(TestCase):
     def test_ballot_creation(self):
         response = self.client.post(
             f"/event/{self.event.id}/create-ballot",
-            query_params={"voter_name": "Don", 'share_token': str(self.event.share_token)},
+            query_params={
+                "voter_name": "Don",
+                "share_token": str(self.event.share_token),
+            },
         )
         self.assertEqual(response.status_code, 200)
 
     def test_ballot_creation_with_duplicate_name(self):
         response = self.client.post(
             f"/event/{self.event.id}/create-ballot",
-            query_params={"voter_name": "Becky", 'share_token': str(self.event.share_token)},
+            query_params={
+                "voter_name": "Becky",
+                "share_token": str(self.event.share_token),
+            },
         )
         self.assertEqual(response.status_code, 422)
 
@@ -109,6 +115,22 @@ class BallotTestCase(TestCase):
             json={"vote": "Ed's Fusion Chili"},
         )
         self.assertEqual(response.status_code, 200)
+
+    def test_ballot_resubmission(self):
+        submission = self.client.post(
+            f"/ballot/{self.ballot.id}/submit",
+            query_params={"token": str(self.ballot.token)},
+            json={"vote": "Ed's Fusion Chili"},
+        )
+        self.assertEqual(submission.status_code, 200)
+
+        resubmission = self.client.post(
+            f"/ballot/{self.ballot.id}/submit",
+            query_params={"token": str(self.ballot.token)},
+            json={"vote": "Tom's Texas Chili"},
+        )
+        print(resubmission.status_code, resubmission.data)
+        self.assertEqual(resubmission.status_code, 403)
 
     def test_ballot_submission_with_bad_token(self):
         response = self.client.post(
