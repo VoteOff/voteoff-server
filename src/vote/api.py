@@ -111,9 +111,9 @@ class BallotSubmission(Schema):
 
 
 @router.post("/ballot/{ballot_id}/submit")
-def submit_ballot(request: HttpRequest, ballot_id: int, ballot_token: str, payload: BallotSubmission):
+def submit_ballot(request: HttpRequest, ballot_id: int, token: str, payload: BallotSubmission):
     ballot = get_object_or_404(Ballot, pk=ballot_id)
-    if ballot_token != str(ballot.token):
+    if token != str(ballot.token):
         raise AuthorizationError
 
     ballot.vote = payload.vote
