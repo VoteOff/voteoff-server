@@ -88,6 +88,16 @@ def get_ballot_statuses(request: HttpRequest, event_id: str, host_token: str):
     }
 
 
+@router.get("/event/{event_id}/ballot-results")
+def get_ballot_results(request: HttpRequest, event_id: str, host_token: str):
+    event = get_object_or_404(Event, pk=event_id)
+
+    if host_token != str(event.host_token):
+        raise AuthorizationError
+
+    return [b.vote for b in event.ballot_set.all()]
+
+
 # Ballots
 
 
