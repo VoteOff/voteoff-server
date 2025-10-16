@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List, Any
 
+from django.db import IntegrityError
 from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import AuthorizationError, ValidationError
@@ -118,9 +119,15 @@ def create_ballot(
     if share_token != str(event.share_token):
         raise AuthorizationError
 
-    # TODO better handling of name duplicates
+    try:
+        ballot = Ballot.objects.create(event=event, voter_name=voter_name)
+    except IntegrityError as err:
+        if "unique_voter_names_in_event" in str(err):
+            raise ValidationError("Duplicate voter name")
+        else:
+            raise err
 
-    ballot = Ballot.objects.create(event=event, voter_name=voter_name)
+
     return {"ballot_id": ballot.id, "ballot_token": ballot.token}
 
 
