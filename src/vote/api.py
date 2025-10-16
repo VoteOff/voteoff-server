@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Any
 
 from django.http import HttpRequest
 from ninja import Router
@@ -18,21 +18,14 @@ class EventCreation(Schema):
     electoral_system: Event.ElectoralSystem
 
 
-class EventDetails(Schema):
+class EventDetails(EventCreation):
     id: int
-    name: str
-    choices: List[str]
-    electoral_system: str
     closed: datetime | None
     share_token: uuid.UUID
 
 
 class EventCreationResponse(EventDetails):
     host_token: uuid.UUID
-
-
-class TokenBody(Schema):
-    host_token: str
 
 
 @router.post("/event/create", response={201: EventCreationResponse})
@@ -61,10 +54,10 @@ def read_event(request, event_id: int, host_token: str = None, share_token: str 
 
 
 @router.post("/event/{event_id}/close")
-def close_event(request: HttpRequest, event_id: str, payload: TokenBody):
+def close_event(request: HttpRequest, event_id: str, host_token: str):
     event = get_object_or_404(Event, pk=event_id)
 
-    if payload.host_token != str(event.host_token):
+    if host_token != str(event.host_token):
         raise AuthorizationError
 
     event.closed = datetime.now()
@@ -72,10 +65,10 @@ def close_event(request: HttpRequest, event_id: str, payload: TokenBody):
 
 
 @router.post("/event/{event_id}/open")
-def open_event(request: HttpRequest, event_id: str, payload: TokenBody):
+def open_event(request: HttpRequest, event_id: str, host_token: str):
     event = get_object_or_404(Event, pk=event_id)
 
-    if payload.host_token != str(event.host_token):
+    if host_token != str(event.host_token):
         raise AuthorizationError
 
     event.closed = None
@@ -114,30 +107,14 @@ def create_ballot(
 
 
 class BallotSubmission(Schema):
-    token: str
-    vote: str | List[str]
+    vote: Any
 
 
 @router.post("/ballot/{ballot_id}/submit")
-def submit_ballot(request: HttpRequest, ballot_id: int, payload: BallotSubmission):
+def submit_ballot(request: HttpRequest, ballot_id: int, ballot_token: str, payload: BallotSubmission):
     ballot = get_object_or_404(Ballot, pk=ballot_id)
-    if payload.token != str(ballot.token):
+    if ballot_token != str(ballot.token):
         raise AuthorizationError
-
-    # Format Validation
-
-    if ballot.event.electoral_system == Event.ElectoralSystem.PLURALITY:
-        if not isinstance(payload.vote, str):
-            raise ValidationError("Ballot format does not match electoral system.")
-        if payload.vote not in ballot.event.choices:
-            raise ValidationError("Invalid candidate")
-
-    elif ballot.event.electoral_system == Event.ElectoralSystem.RANKED_CHOICE:
-        if not isinstance(payload.vote, List):
-            raise ValidationError("Ballot format does not match electoral system.")
-        for choice in payload.vote:
-            if choice not in ballot.event.choices:
-                raise ValidationError("Invalid candidate")
 
     ballot.vote = payload.vote
     ballot.submitted = datetime.now()
