@@ -3,7 +3,7 @@ from typing import List, Any
 
 from django.db import IntegrityError
 from django.http import HttpRequest
-from ninja import Router
+from ninja import ModelSchema, Router
 from ninja.errors import AuthorizationError, ValidationError
 from .models import Event, Ballot
 from django.shortcuts import get_object_or_404
@@ -79,35 +79,20 @@ def open_event(request: HttpRequest, event_id: str, host_token: str):
 # Ballots
 
 
-@router.get("/event/{event_id}/ballot-statuses")
-def get_ballot_statuses(request: HttpRequest, event_id: str, host_token: str):
+class BallotSchema(ModelSchema):
+    class Meta:
+        model = Ballot
+        fields = ["id", "voter_name", "created", "submitted"]
+
+
+@router.get("/event/{event_id}/ballots", response=List[BallotSchema])
+def list_ballots(request, event_id: str, host_token: str):
     event = get_object_or_404(Event, pk=event_id)
 
     if host_token != str(event.host_token):
         raise AuthorizationError
 
-    return {
-        "pending": [
-            b.voter_name
-            for b in event.ballot_set.filter(submitted__isnull=True).order_by("created")
-        ],
-        "submitted": [
-            b.voter_name
-            for b in event.ballot_set.filter(submitted__isnull=False).order_by(
-                "submitted"
-            )
-        ],
-    }
-
-
-@router.get("/event/{event_id}/ballot-results")
-def get_ballot_results(request: HttpRequest, event_id: str, host_token: str):
-    event = get_object_or_404(Event, pk=event_id)
-
-    if host_token != str(event.host_token):
-        raise AuthorizationError
-
-    return [b.vote for b in event.ballot_set.all()]
+    return event.ballot_set.all().order_by("created", "submitted")
 
 
 @router.post("/event/{event_id}/create-ballot")
