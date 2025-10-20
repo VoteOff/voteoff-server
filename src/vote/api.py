@@ -40,15 +40,18 @@ def create_event(request, payload: EventCreation):
 
 
 @router.get("/event/{event_id}", response=EventDetails)
-def read_event(request, event_id: int, host_token: str = None, share_token: str = None):
+def read_event(request, event_id: int, token: str = None):
     event = get_object_or_404(Event, pk=event_id)
 
-    # Must provide a valid host_token or share_token
-    if share_token is None and host_token is None:
+    # Must provide a valid token, this can be host/share/ballot
+    if token is None:
         raise AuthorizationError
-    if share_token is not None and share_token != str(event.share_token):
-        raise AuthorizationError
-    if host_token is not None and host_token != str(event.host_token):
+
+    if (
+        token != str(event.share_token)
+        and token != str(event.host_token)
+        and token not in [str(x.token) for x in event.ballot_set.all()]
+    ):
         raise AuthorizationError
 
     return event
@@ -86,10 +89,12 @@ class BallotSchema(ModelSchema):
 
 
 @router.get("/event/{event_id}/ballots", response=List[BallotSchema])
-def list_ballots(request, event_id: str, host_token: str):
+def list_ballots(request, event_id: str, token: str):
     event = get_object_or_404(Event, pk=event_id)
 
-    if host_token != str(event.host_token):
+    if token != str(event.host_token) and token not in [
+        str(x.token) for x in event.ballot_set.all()
+    ]:
         raise AuthorizationError
 
     return event.ballot_set.all().order_by("created", "submitted")
