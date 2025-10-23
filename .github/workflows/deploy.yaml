@@ -1,0 +1,24 @@
+name: Resusable Deployment Workflow
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save SSH Key
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > dev_key
+          chmod 600 dev_key
+      - name: Update Dependencies
+        run: |
+          ssh -i ./dev_key -v -o StrictHostKeyChecking=no ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} <<'ENDSSH'
+          if [ -d "server" ]; then
+            git clone git@github.com:VoteOff/voteoff-server.git
+          fi
+          cd server
+          git pull
+          echo "Push new docker file, if any"
+          ENDSSH
