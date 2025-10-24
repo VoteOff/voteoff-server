@@ -85,7 +85,7 @@ def open_event(request: HttpRequest, event_id: str, host_token: str):
 class BallotSchema(ModelSchema):
     class Meta:
         model = Ballot
-        fields = ["id", "voter_name", "created", "submitted"]
+        fields = ["id", "voter_name", "vote", "created", "submitted"]
 
 
 @router.get("/event/{event_id}/ballots", response=List[BallotSchema])
