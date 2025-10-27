@@ -2,7 +2,7 @@ from datetime import datetime, UTC
 from typing import List, Any
 
 from django.db import IntegrityError
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 from ninja import ModelSchema, Router
 from ninja.errors import AuthorizationError, ValidationError
 from .models import Event, Ballot
@@ -138,3 +138,13 @@ def submit_ballot(
     ballot.vote = payload.vote
     ballot.submitted = datetime.now(tz=UTC)
     ballot.save()
+
+
+@router.get("/ballot/from-token", response=BallotSchema)
+def get_ballot_form_token(request: HttpRequest, token: uuid.UUID):
+    ballots = Ballot.objects.filter(token=token)
+
+    if ballots.count() == 0:
+        raise Http404("Ballot not found")
+    else:
+        return ballots.first()
