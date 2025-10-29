@@ -138,3 +138,15 @@ def submit_ballot(
     ballot.vote = payload.vote
     ballot.submitted = datetime.now(tz=UTC)
     ballot.save()
+
+
+@router.get("/ballot/{ballot_id}", response=BallotSchema)
+def get_ballot(request, ballot_id: int, token: uuid.UUID):
+    ballot = get_object_or_404(Ballot, pk=ballot_id)
+
+    print("Ballot token:", ballot.token, token)
+
+    if token != ballot.token and token != ballot.event.host_token:
+        raise AuthorizationError
+
+    return ballot
