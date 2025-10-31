@@ -16,7 +16,7 @@ router = Router()
 class EventCreation(Schema):
     name: str
     choices: List[str]
-    electoral_system: Event.ElectoralSystem
+    electoral_system: str
 
 
 class EventDetails(EventCreation):
@@ -34,7 +34,7 @@ def create_event(request, payload: EventCreation):
     event = Event.objects.create(
         name=payload.name,
         choices=payload.choices,
-        electoral_system=payload.electoral_system.value,
+        electoral_system=payload.electoral_system,
     )
     return 201, event
 
@@ -138,3 +138,4 @@ def submit_ballot(
     ballot.vote = payload.vote
     ballot.submitted = datetime.now(tz=UTC)
     ballot.save()
+

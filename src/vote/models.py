@@ -10,12 +10,7 @@ class Event(models.Model):
     choices = models.JSONField()
     created = models.DateTimeField(auto_now_add=True)
     closed = models.DateTimeField(null=True)
-
-    class ElectoralSystem(models.TextChoices):
-        RANKED_CHOICE = "RC", "Ranked Choice"
-        PLURALITY = "PL", "Plurality"
-
-    electoral_system = models.CharField(max_length=2, choices=ElectoralSystem)
+    electoral_system = models.CharField(max_length=2)
 
 
 class Ballot(models.Model):
