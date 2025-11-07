@@ -1,6 +1,6 @@
 from datetime import datetime, UTC
 
-from django.test import TestCase, Client
+from django.test import TestCase
 from ninja.testing import TestClient
 from .models import Event, Ballot
 from .api import router
