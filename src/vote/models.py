@@ -14,7 +14,7 @@ class Event(models.Model):
 
 
 class Ballot(models.Model):
-    token = models.UUIDField(default=uuid.uuid4, editable=False)
+    token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     voter_name = models.CharField()
