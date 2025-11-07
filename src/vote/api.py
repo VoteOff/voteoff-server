@@ -148,3 +148,15 @@ def get_ballot_form_token(request: HttpRequest, token: uuid.UUID):
         raise Http404("Ballot not found")
     else:
         return ballots.first()
+
+
+@router.get("/ballot/{ballot_id}", response=BallotSchema)
+def get_ballot(request, ballot_id: int, token: uuid.UUID):
+    ballot = get_object_or_404(Ballot, pk=ballot_id)
+
+    print("Ballot token:", ballot.token, token)
+
+    if token != ballot.token and token != ballot.event.host_token:
+        raise AuthorizationError
+
+    return ballot
