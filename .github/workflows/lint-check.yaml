@@ -1,0 +1,26 @@
+name: Lint Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install poetry
+        run: pipx install "poetry==2.1.4"
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "poetry"
+      - name: Install Python Dependencies
+        run: poetry install
+      - name: Run Lint
+        run: poetry run ruff check .
