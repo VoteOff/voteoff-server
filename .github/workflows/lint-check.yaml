@@ -12,11 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install poetry
-        run: |
-          export POETRY_HOME=/opt/poetry
-          python -m venv $POETRY_HOME
-          $POETRY_HOME/bin/pip install poetry==2.0.0
-          $POETRY_HOME/bin/poetry --version
+        run: pipx install "poetry==2.1.4"
       - name: Install Python
         uses: actions/setup-python@v6
         with:
