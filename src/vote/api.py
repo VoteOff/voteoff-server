@@ -1,32 +1,23 @@
 from datetime import datetime, UTC
-from typing import List, Any
+from typing import List
 
 from django.db import IntegrityError
 from django.http import Http404, HttpRequest
-from ninja import ModelSchema, Router
+from ninja import Router
 from ninja.errors import AuthorizationError, ValidationError
+
+from vote.schemas import (
+    BallotSchema,
+    BallotSubmission,
+    EventCreationResponse,
+    EventDetails,
+    EventCreation,
+)
 from .models import Event, Ballot
 from django.shortcuts import get_object_or_404
-from ninja import Schema
 import uuid
 
 router = Router()
-
-
-class EventCreation(Schema):
-    name: str
-    choices: List[str]
-    electoral_system: str
-
-
-class EventDetails(EventCreation):
-    id: int
-    closed: datetime | None
-    share_token: uuid.UUID
-
-
-class EventCreationResponse(EventDetails):
-    host_token: uuid.UUID
 
 
 @router.post("/event/create", response={201: EventCreationResponse}, tags=["event"])
@@ -80,14 +71,6 @@ def open_event(request: HttpRequest, event_id: str, host_token: str):
 
 
 # Ballots
-
-
-class BallotSchema(ModelSchema):
-    class Meta:
-        model = Ballot
-        fields = ["id", "voter_name", "vote", "created", "submitted"]
-
-
 @router.get("/event/{event_id}/ballots", response=List[BallotSchema], tags=["ballot"])
 def list_ballots(request, event_id: str, token: str):
     event = get_object_or_404(Event, pk=event_id)
@@ -118,10 +101,6 @@ def create_ballot(
             raise err
 
     return {"ballot_id": ballot.id, "ballot_token": ballot.token}
-
-
-class BallotSubmission(Schema):
-    vote: Any
 
 
 @router.post("/ballot/{ballot_id}/submit", tags=["ballot"])
