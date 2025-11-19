@@ -16,6 +16,7 @@ class EventDetails(EventCreation):
     id: int
     closed: datetime | None
     share_token: uuid.UUID
+    show_results: bool
 
 
 class EventCreationResponse(EventDetails):
