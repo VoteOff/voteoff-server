@@ -80,7 +80,7 @@ def open_event(request: HttpRequest, event_id: str, host_token: str):
     event.save()
 
 
-@router.post("/event/{event_id}/show-results")
+@router.post("/event/{event_id}/show-results", tags=["event"])
 def show_results(request, event_id: str, host_token: str):
     event = get_object_or_404(Event, pk=event_id)
 
@@ -91,7 +91,7 @@ def show_results(request, event_id: str, host_token: str):
     event.save()
 
 
-@router.post("/event/{event_id}/hide-results")
+@router.post("/event/{event_id}/hide-results", tags=["event"])
 def hide_results(request, event_id: str, host_token: str):
     event = get_object_or_404(Event, pk=event_id)
 
