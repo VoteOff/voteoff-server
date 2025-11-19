@@ -79,6 +79,28 @@ def open_event(request: HttpRequest, event_id: str, host_token: str):
     event.save()
 
 
+@router.post("/event/{event_id}/show-results")
+def show_results(request, event_id: str, host_token: str):
+    event = get_object_or_404(Event, pk=event_id)
+
+    if host_token != str(event.host_token):
+        raise AuthorizationError
+
+    event.show_results = True
+    event.save()
+
+
+@router.post("/event/{event_id}/hide-results")
+def hide_results(request, event_id: str, host_token: str):
+    event = get_object_or_404(Event, pk=event_id)
+
+    if host_token != str(event.host_token):
+        raise AuthorizationError
+
+    event.show_results = False
+    event.save()
+
+
 # Ballots
 
 
