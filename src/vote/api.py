@@ -21,12 +21,14 @@ router = Router()
 
 
 @router.post("/event/create", response={201: EventCreationResponse}, tags=["event"])
-def create_event(request, payload: EventCreation):
-    event = Event.objects.create(
+async def create_event(request, payload: EventCreation):
+    event = Event(
         name=payload.name,
         choices=payload.choices,
         electoral_system=payload.electoral_system,
     )
+    await event.asave()
+
     return 201, event
 
 

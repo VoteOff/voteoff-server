@@ -1,5 +1,5 @@
 from django.test import TestCase
-from ninja.testing import TestClient
+from ninja.testing import TestClient, TestAsyncClient
 from .models import Event, Ballot
 from .api import router
 
@@ -7,14 +7,15 @@ from .api import router
 class EventTestCase(TestCase):
     def setUp(self):
         self.client = TestClient(router)
+        self.aclient = TestAsyncClient(router)
         self.event = Event.objects.create(
             name="Big Cookoff",
             choices=["Tom's Texas Chili", "Jim's Vegan Chili", "Ed's Fusion Chili"],
             electoral_system="PL",
         )
 
-    def test_create_event(self):
-        response = self.client.post(
+    async def test_create_event(self):
+        response = await self.aclient.post(
             "/event/create",
             json={
                 "name": "Big Cookoff",
