@@ -57,7 +57,7 @@ async def close_event(request: HttpRequest, event_id: str, host_token: str):
     if host_token != str(event.host_token):
         raise AuthorizationError
 
-    event.closed = datetime.now()
+    event.closed = datetime.now(tz=UTC)
     await event.asave()
 
 
@@ -87,11 +87,11 @@ async def list_ballots(request, event_id: str, token: uuid.UUID):
 
 @router.post("/event/{event_id}/create-ballot", tags=["ballot"])
 def create_ballot(
-    request: HttpRequest, event_id: str, voter_name: str, share_token: str
+    request: HttpRequest, event_id: str, voter_name: str, share_token: uuid.UUID
 ):
     event = get_object_or_404(Event, pk=event_id)
 
-    if share_token != str(event.share_token):
+    if share_token != event.share_token:
         raise AuthorizationError
 
     try:
