@@ -86,16 +86,18 @@ async def list_ballots(request, event_id: str, token: uuid.UUID):
 
 
 @router.post("/event/{event_id}/create-ballot", tags=["ballot"])
-def create_ballot(
+async def create_ballot(
     request: HttpRequest, event_id: str, voter_name: str, share_token: uuid.UUID
 ):
-    event = get_object_or_404(Event, pk=event_id)
+    event = await aget_object_or_404(Event, pk=event_id)
 
     if share_token != event.share_token:
         raise AuthorizationError
 
+    ballot = Ballot(event=event, voter_name=voter_name)
+
     try:
-        ballot = Ballot.objects.create(event=event, voter_name=voter_name)
+        await ballot.asave()
     except IntegrityError as err:
         if "unique_voter_names_in_event" in str(err):
             raise ValidationError("Duplicate voter name")
