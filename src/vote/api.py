@@ -74,15 +74,15 @@ async def open_event(request: HttpRequest, event_id: str, host_token: str):
 
 # Ballots
 @router.get("/event/{event_id}/ballots", response=List[BallotSchema], tags=["ballot"])
-def list_ballots(request, event_id: str, token: str):
-    event = get_object_or_404(Event, pk=event_id)
+async def list_ballots(request, event_id: str, token: uuid.UUID):
+    event = await aget_object_or_404(Event, pk=event_id)
 
-    if token != str(event.host_token) and token not in [
-        str(x.token) for x in event.ballot_set.all()
+    if token != event.host_token and token not in [
+        x.token async for x in event.ballot_set.all()
     ]:
         raise AuthorizationError
 
-    return event.ballot_set.all().order_by("created", "submitted")
+    return [x async for x in event.ballot_set.all().order_by("created", "submitted")]
 
 
 @router.post("/event/{event_id}/create-ballot", tags=["ballot"])
