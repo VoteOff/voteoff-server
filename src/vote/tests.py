@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 from django.test import TestCase
 from ninja.testing import TestClient, TestAsyncClient
 from .models import Event, Ballot
@@ -103,6 +104,16 @@ class BallotTestCase(TestCase):
             },
         )
         self.assertEqual(response.status_code, 422)
+
+    async def test_ballot_creation_with_bad_token(self):
+        response = await self.aclient.post(
+            f"/event/{self.event.id}/create-ballot",
+            query_params={
+                "voter_name": "Don",
+                "share_token": uuid.uuid4(),
+            },
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_ballot_submission(self):
         response = self.client.post(
