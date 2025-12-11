@@ -7,7 +7,6 @@ from .api import router
 
 class EventTestCase(TestCase):
     def setUp(self):
-        self.client = TestClient(router)
         self.aclient = TestAsyncClient(router)
         self.event = Event.objects.create(
             name="Big Cookoff",
@@ -76,6 +75,7 @@ class EventTestCase(TestCase):
 class BallotTestCase(TestCase):
     def setUp(self):
         self.client = TestClient(router)
+        self.aclient = TestAsyncClient(router)
         self.event = Event.objects.create(
             name="Big Cookoff",
             choices=["Tom's Texas Chili", "Jim's Vegan Chili", "Ed's Fusion Chili"],
@@ -132,4 +132,71 @@ class BallotTestCase(TestCase):
             query_params={"token": "BAD_TOKEN"},
             json={"vote": "Ed's Fusion Chili", "token": "BAD_TOKEN"},
         )
+        self.assertEqual(response.status_code, 403)
+
+    async def test_ballot_list(self):
+        event = Event(
+            name="Small Cookoff",
+            choices=["Chilli 1", "Chilli 2", "Chilli 3"],
+            electoral_system="PL",
+        )
+        await event.asave()
+        ballot1 = Ballot(event=event, voter_name="Bob")
+        ballot2 = Ballot(event=event, voter_name="Jeff")
+        ballot3 = Ballot(event=event, voter_name="Billy")
+        await ballot1.asave()
+        await ballot2.asave()
+        await ballot3.asave()
+
+        response = await self.aclient.get(
+            f"/event/{event.id}/ballots",
+            query_params={"token": event.host_token},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 3)
+
+        response = await self.aclient.get(
+            f"/event/{event.id}/ballots",
+            query_params={"token": ballot1.token},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 3)
+
+    async def test_ballot_list_unauthorized(self):
+        event = Event(
+            name="Small Cookoff",
+            choices=["Chilli 1", "Chilli 2", "Chilli 3"],
+            electoral_system="PL",
+        )
+        await event.asave()
+        event1 = Event(
+            name="Big Cooky",
+            choices=["Chilli 1", "Chilli 2", "Chilli 3"],
+            electoral_system="PL",
+        )
+        await event1.asave()
+
+        ballot = Ballot(event=event, voter_name="Train")
+
+        ballot1 = Ballot(event=event, voter_name="Bob")
+        ballot2 = Ballot(event=event, voter_name="Jeff")
+        ballot3 = Ballot(event=event, voter_name="Billy")
+        await ballot1.asave()
+        await ballot2.asave()
+        await ballot3.asave()
+
+        response = await self.aclient.get(
+            f"/event/{event.id}/ballots",
+            query_params={"token": event1.host_token},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+        response = await self.aclient.get(
+            f"/event/{event.id}/ballots",
+            query_params={"token": ballot.token},
+        )
+
         self.assertEqual(response.status_code, 403)
