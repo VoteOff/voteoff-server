@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.test import TestCase
 from ninja.testing import TestClient, TestAsyncClient
 from .models import Event, Ballot
@@ -29,21 +30,47 @@ class EventTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 201)
 
-    def test_read_event(self):
-        response = self.client.get(
+    async def test_read_event(self):
+        response = await self.aclient.get(
             f"/event/{self.event.id}",
             query_params={"token": str(self.event.host_token)},
         )
         self.assertEqual(response.status_code, 200)
 
-    def test_read_event_without_token(self):
-        event = Event.objects.create(
+    async def test_read_event_without_token(self):
+        event = Event(
             name="Big Cookoff",
             choices=["Tom's Texas Chili", "Jim's Vegan Chili", "Ed's Fusion Chili"],
             electoral_system="PL",
         )
-        response = self.client.get(f"/event/{event.id}")
+        await event.asave()
+        response = await self.aclient.get(f"/event/{event.id}")
         self.assertEqual(response.status_code, 403)
+
+    async def test_close_event(self):
+        response = await self.aclient.post(
+            f"/event/{self.event.id}/close",
+            query_params={"host_token": str(self.event.host_token)},
+        )
+        self.assertEqual(response.status_code, 200)
+
+        event = await Event.objects.aget(pk=self.event.id)
+
+        self.assertIsNotNone(event.closed)
+
+    async def test_open_event(self):
+        self.event.closed = datetime.now()
+        await self.event.asave()
+
+        response = await self.aclient.post(
+            f"/event/{self.event.id}/open",
+            query_params={"host_token": str(self.event.host_token)},
+        )
+        self.assertEqual(response.status_code, 200)
+
+        event = await Event.objects.aget(pk=self.event.id)
+
+        self.assertIsNone(event.closed)
 
 
 class BallotTestCase(TestCase):

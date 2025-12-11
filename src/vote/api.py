@@ -14,7 +14,7 @@ from vote.schemas import (
     EventCreation,
 )
 from .models import Event, Ballot
-from django.shortcuts import get_object_or_404
+from django.shortcuts import aget_object_or_404, get_object_or_404
 import uuid
 
 router = Router()
@@ -33,8 +33,8 @@ async def create_event(request, payload: EventCreation):
 
 
 @router.get("/event/{event_id}", response=EventDetails, tags=["event"])
-def read_event(request, event_id: int, token: str = None):
-    event = get_object_or_404(Event, pk=event_id)
+async def read_event(request, event_id: int, token: str = None):
+    event = await aget_object_or_404(Event, pk=event_id)
 
     # Must provide a valid token, this can be host/share/ballot
     if token is None:
@@ -43,7 +43,7 @@ def read_event(request, event_id: int, token: str = None):
     if (
         token != str(event.share_token)
         and token != str(event.host_token)
-        and token not in [str(x.token) for x in event.ballot_set.all()]
+        and token not in [str(x.token) async for x in event.ballot_set.all()]
     ):
         raise AuthorizationError
 
@@ -51,25 +51,25 @@ def read_event(request, event_id: int, token: str = None):
 
 
 @router.post("/event/{event_id}/close", tags=["event"])
-def close_event(request: HttpRequest, event_id: str, host_token: str):
-    event = get_object_or_404(Event, pk=event_id)
+async def close_event(request: HttpRequest, event_id: str, host_token: str):
+    event = await aget_object_or_404(Event, pk=event_id)
 
     if host_token != str(event.host_token):
         raise AuthorizationError
 
     event.closed = datetime.now()
-    event.save()
+    await event.asave()
 
 
 @router.post("/event/{event_id}/open", tags=["event"])
-def open_event(request: HttpRequest, event_id: str, host_token: str):
-    event = get_object_or_404(Event, pk=event_id)
+async def open_event(request: HttpRequest, event_id: str, host_token: str):
+    event = await aget_object_or_404(Event, pk=event_id)
 
     if host_token != str(event.host_token):
         raise AuthorizationError
 
     event.closed = None
-    event.save()
+    await event.asave()
 
 
 # Ballots
