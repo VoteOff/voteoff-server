@@ -212,3 +212,18 @@ class BallotTestCase(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+
+    async def test_get_ballot(self):
+        response = await self.aclient.get(
+            f"/ballot/{self.ballot.id}",
+            query_params={"token": self.ballot.token},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["voter_name"], "Becky")
+
+    async def test_get_ballot_unauthorized(self):
+        response = await self.aclient.get(
+            f"/ballot/{self.ballot.id}",
+            query_params={"token": uuid.uuid4()},
+        )
+        self.assertEqual(response.status_code, 403)

@@ -14,7 +14,7 @@ from vote.schemas import (
     EventCreation,
 )
 from .models import Event, Ballot
-from django.shortcuts import aget_object_or_404, get_object_or_404
+from django.shortcuts import aget_object_or_404
 import uuid
 
 router = Router()
@@ -134,8 +134,11 @@ def get_ballot_form_token(request: HttpRequest, token: uuid.UUID):
 
 
 @router.get("/ballot/{ballot_id}", response=BallotSchema, tags=["ballot"])
-def get_ballot(request, ballot_id: int, token: uuid.UUID):
-    ballot = get_object_or_404(Ballot, pk=ballot_id)
+async def get_ballot(request, ballot_id: int, token: uuid.UUID):
+    try:
+        ballot = await Ballot.objects.prefetch_related("event").aget(pk=ballot_id)
+    except Ballot.DoesNotExist:
+        raise Http404("Ballot not found")
 
     if token != ballot.token and token != ballot.event.host_token:
         raise AuthorizationError
