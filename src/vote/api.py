@@ -2,7 +2,7 @@ from datetime import datetime, UTC
 from typing import List
 
 from django.db import IntegrityError
-from django.http import Http404, HttpRequest
+from django.http import Http404
 from ninja import Router
 from ninja.errors import AuthorizationError, ValidationError
 
@@ -33,17 +33,13 @@ async def create_event(request, payload: EventCreation):
 
 
 @router.get("/event/{event_id}", response=EventDetails, tags=["event"])
-async def read_event(request, event_id: int, token: str = None):
+async def read_event(request, event_id: int, token: uuid.UUID):
     event = await aget_object_or_404(Event, pk=event_id)
 
-    # Must provide a valid token, this can be host/share/ballot
-    if token is None:
-        raise AuthorizationError
-
     if (
-        token != str(event.share_token)
-        and token != str(event.host_token)
-        and token not in [str(x.token) async for x in event.ballot_set.all()]
+        token != event.share_token
+        and token != event.host_token
+        and token not in [x.token async for x in event.ballot_set.all()]
     ):
         raise AuthorizationError
 
@@ -51,10 +47,10 @@ async def read_event(request, event_id: int, token: str = None):
 
 
 @router.post("/event/{event_id}/close", tags=["event"])
-async def close_event(request: HttpRequest, event_id: str, host_token: str):
+async def close_event(request, event_id: str, host_token: uuid.UUID):
     event = await aget_object_or_404(Event, pk=event_id)
 
-    if host_token != str(event.host_token):
+    if host_token != event.host_token:
         raise AuthorizationError
 
     event.closed = datetime.now(tz=UTC)
@@ -62,10 +58,10 @@ async def close_event(request: HttpRequest, event_id: str, host_token: str):
 
 
 @router.post("/event/{event_id}/open", tags=["event"])
-async def open_event(request: HttpRequest, event_id: str, host_token: str):
+async def open_event(request, event_id: str, host_token: uuid.UUID):
     event = await aget_object_or_404(Event, pk=event_id)
 
-    if host_token != str(event.host_token):
+    if host_token != event.host_token:
         raise AuthorizationError
 
     event.closed = None
@@ -87,7 +83,7 @@ async def list_ballots(request, event_id: str, token: uuid.UUID):
 
 @router.post("/event/{event_id}/create-ballot", tags=["ballot"])
 async def create_ballot(
-    request: HttpRequest, event_id: str, voter_name: str, share_token: uuid.UUID
+    request, event_id: str, voter_name: str, share_token: uuid.UUID
 ):
     event = await aget_object_or_404(Event, pk=event_id)
 
@@ -109,7 +105,7 @@ async def create_ballot(
 
 @router.post("/ballot/{ballot_id}/submit", tags=["ballot"])
 async def submit_ballot(
-    request: HttpRequest, ballot_id: int, token: uuid.UUID, payload: BallotSubmission
+    request, ballot_id: int, token: uuid.UUID, payload: BallotSubmission
 ):
     ballot = await aget_object_or_404(Ballot, pk=ballot_id)
     if token != ballot.token:
@@ -124,7 +120,7 @@ async def submit_ballot(
 
 
 @router.get("/ballot/from-token", response=BallotSchema, tags=["ballot"])
-def get_ballot_form_token(request: HttpRequest, token: uuid.UUID):
+def get_ballot_form_token(request, token: uuid.UUID):
     ballots = Ballot.objects.filter(token=token)
 
     if ballots.count() == 0:

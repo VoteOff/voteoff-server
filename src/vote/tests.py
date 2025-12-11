@@ -33,24 +33,20 @@ class EventTestCase(TestCase):
     async def test_read_event(self):
         response = await self.aclient.get(
             f"/event/{self.event.id}",
-            query_params={"token": str(self.event.host_token)},
+            query_params={"token": self.event.host_token},
         )
         self.assertEqual(response.status_code, 200)
 
-    async def test_read_event_without_token(self):
-        event = Event(
-            name="Big Cookoff",
-            choices=["Tom's Texas Chili", "Jim's Vegan Chili", "Ed's Fusion Chili"],
-            electoral_system="PL",
+    async def test_read_event_unauthorized(self):
+        response = await self.aclient.get(
+            f"/event/{self.event.id}", query_params={"token": uuid.uuid4()}
         )
-        await event.asave()
-        response = await self.aclient.get(f"/event/{event.id}")
         self.assertEqual(response.status_code, 403)
 
     async def test_close_event(self):
         response = await self.aclient.post(
             f"/event/{self.event.id}/close",
-            query_params={"host_token": str(self.event.host_token)},
+            query_params={"host_token": self.event.host_token},
         )
         self.assertEqual(response.status_code, 200)
 
@@ -64,7 +60,7 @@ class EventTestCase(TestCase):
 
         response = await self.aclient.post(
             f"/event/{self.event.id}/open",
-            query_params={"host_token": str(self.event.host_token)},
+            query_params={"host_token": self.event.host_token},
         )
         self.assertEqual(response.status_code, 200)
 
@@ -133,7 +129,7 @@ class BallotTestCase(TestCase):
 
         resubmission = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
-            query_params={"token": str(self.ballot.token)},
+            query_params={"token": self.ballot.token},
             json={"vote": "Tom's Texas Chili"},
         )
         self.assertEqual(resubmission.status_code, 403)
