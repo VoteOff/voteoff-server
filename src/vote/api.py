@@ -108,11 +108,11 @@ async def create_ballot(
 
 
 @router.post("/ballot/{ballot_id}/submit", tags=["ballot"])
-def submit_ballot(
-    request: HttpRequest, ballot_id: int, token: str, payload: BallotSubmission
+async def submit_ballot(
+    request: HttpRequest, ballot_id: int, token: uuid.UUID, payload: BallotSubmission
 ):
-    ballot = get_object_or_404(Ballot, pk=ballot_id)
-    if token != str(ballot.token):
+    ballot = await aget_object_or_404(Ballot, pk=ballot_id)
+    if token != ballot.token:
         raise AuthorizationError
 
     if ballot.submitted is not None:
@@ -120,7 +120,7 @@ def submit_ballot(
 
     ballot.vote = payload.vote
     ballot.submitted = datetime.now(tz=UTC)
-    ballot.save()
+    await ballot.asave()
 
 
 @router.get("/ballot/from-token", response=BallotSchema, tags=["ballot"])

@@ -115,34 +115,34 @@ class BallotTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_ballot_submission(self):
-        response = self.client.post(
+    async def test_ballot_submission(self):
+        response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
-            query_params={"token": str(self.ballot.token)},
+            query_params={"token": self.ballot.token},
             json={"vote": "Ed's Fusion Chili"},
         )
         self.assertEqual(response.status_code, 200)
 
-    def test_ballot_resubmission(self):
-        submission = self.client.post(
+    async def test_ballot_resubmission(self):
+        submission = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
-            query_params={"token": str(self.ballot.token)},
+            query_params={"token": self.ballot.token},
             json={"vote": "Ed's Fusion Chili"},
         )
         self.assertEqual(submission.status_code, 200)
 
-        resubmission = self.client.post(
+        resubmission = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
             query_params={"token": str(self.ballot.token)},
             json={"vote": "Tom's Texas Chili"},
         )
         self.assertEqual(resubmission.status_code, 403)
 
-    def test_ballot_submission_with_bad_token(self):
-        response = self.client.post(
+    async def test_ballot_submission_with_bad_token(self):
+        response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
-            query_params={"token": "BAD_TOKEN"},
-            json={"vote": "Ed's Fusion Chili", "token": "BAD_TOKEN"},
+            query_params={"token": uuid.uuid4()},
+            json={"vote": "Ed's Fusion Chili"},
         )
         self.assertEqual(response.status_code, 403)
 
