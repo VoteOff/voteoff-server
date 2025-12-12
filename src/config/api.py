@@ -7,7 +7,7 @@ from django.conf import settings
 
 api = NinjaAPI(
     title="Vote The Bowl API",
-    version="1.0.0",
+    version="0.3.0",
     docs_url=("/docs/" if settings.DEBUG else None),
 )
 
