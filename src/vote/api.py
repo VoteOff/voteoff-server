@@ -2,8 +2,8 @@ from datetime import datetime, UTC
 from typing import List
 
 from django.db import IntegrityError
-from django.http import Http404
-from ninja import Router
+from django.http import Http404, HttpRequest
+from ninja import Header, Router
 from ninja.errors import AuthorizationError, ValidationError
 
 from vote.schemas import (
@@ -33,7 +33,9 @@ async def create_event(request, payload: EventCreation):
 
 
 @router.get("/event/{event_id}", response=EventDetails, tags=["event"])
-async def read_event(request, event_id: int, token: uuid.UUID):
+async def read_event(
+    request, event_id: int, token: uuid.UUID = Header(alias="X-API-Key")
+):
     event = await aget_object_or_404(Event, pk=event_id)
 
     if (
@@ -47,10 +49,14 @@ async def read_event(request, event_id: int, token: uuid.UUID):
 
 
 @router.post("/event/{event_id}/close", tags=["event"])
-async def close_event(request, event_id: str, host_token: uuid.UUID):
+async def close_event(
+    request: HttpRequest, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+):
+    request.headers
+
     event = await aget_object_or_404(Event, pk=event_id)
 
-    if host_token != event.host_token:
+    if token != event.host_token:
         raise AuthorizationError
 
     event.closed = datetime.now(tz=UTC)
@@ -58,10 +64,12 @@ async def close_event(request, event_id: str, host_token: uuid.UUID):
 
 
 @router.post("/event/{event_id}/open", tags=["event"])
-async def open_event(request, event_id: str, host_token: uuid.UUID):
+async def open_event(
+    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+):
     event = await aget_object_or_404(Event, pk=event_id)
 
-    if host_token != event.host_token:
+    if token != event.host_token:
         raise AuthorizationError
 
     event.closed = None
@@ -70,7 +78,9 @@ async def open_event(request, event_id: str, host_token: uuid.UUID):
 
 # Ballots
 @router.get("/event/{event_id}/ballots", response=List[BallotSchema], tags=["ballot"])
-async def list_ballots(request, event_id: str, token: uuid.UUID):
+async def list_ballots(
+    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+):
     event = await aget_object_or_404(Event, pk=event_id)
 
     if token != event.host_token and token not in [
@@ -83,7 +93,10 @@ async def list_ballots(request, event_id: str, token: uuid.UUID):
 
 @router.post("/event/{event_id}/create-ballot", tags=["ballot"])
 async def create_ballot(
-    request, event_id: str, voter_name: str, share_token: uuid.UUID
+    request,
+    event_id: str,
+    voter_name: str,
+    share_token: uuid.UUID = Header(alias="X-API-Key"),
 ):
     event = await aget_object_or_404(Event, pk=event_id)
 
@@ -105,7 +118,10 @@ async def create_ballot(
 
 @router.post("/ballot/{ballot_id}/submit", tags=["ballot"])
 async def submit_ballot(
-    request, ballot_id: int, token: uuid.UUID, payload: BallotSubmission
+    request,
+    ballot_id: int,
+    payload: BallotSubmission,
+    token: uuid.UUID = Header(alias="X-API-Key"),
 ):
     ballot = await aget_object_or_404(Ballot, pk=ballot_id)
     if token != ballot.token:
@@ -120,7 +136,7 @@ async def submit_ballot(
 
 
 @router.get("/ballot/from-token", response=BallotSchema, tags=["ballot"])
-def get_ballot_form_token(request, token: uuid.UUID):
+def get_ballot_form_token(request, token: uuid.UUID = Header(alias="X-API-Key")):
     ballots = Ballot.objects.filter(token=token)
 
     if ballots.count() == 0:
@@ -130,7 +146,9 @@ def get_ballot_form_token(request, token: uuid.UUID):
 
 
 @router.get("/ballot/{ballot_id}", response=BallotSchema, tags=["ballot"])
-async def get_ballot(request, ballot_id: int, token: uuid.UUID):
+async def get_ballot(
+    request, ballot_id: int, token: uuid.UUID = Header(alias="X-API-Key")
+):
     try:
         ballot = await Ballot.objects.prefetch_related("event").aget(pk=ballot_id)
     except Ballot.DoesNotExist:
