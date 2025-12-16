@@ -2,7 +2,7 @@ from datetime import datetime, UTC
 from typing import List
 
 from django.db import IntegrityError
-from django.http import Http404, HttpRequest
+from django.http import Http404
 from ninja import Header, Router
 from ninja.errors import AuthorizationError, ValidationError
 
@@ -50,10 +50,8 @@ async def read_event(
 
 @router.post("/event/{event_id}/close", tags=["event"])
 async def close_event(
-    request: HttpRequest, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
 ):
-    request.headers
-
     event = await aget_object_or_404(Event, pk=event_id)
 
     if token != event.host_token:
