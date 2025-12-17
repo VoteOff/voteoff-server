@@ -9,6 +9,7 @@ class Event(models.Model):
     name = models.CharField()
     choices = models.JSONField()
     created = models.DateTimeField(auto_now_add=True)
+    show_results = models.BooleanField(default=False)
     closed = models.DateTimeField(null=True)
     electoral_system = models.CharField(max_length=2)
 
