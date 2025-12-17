@@ -75,25 +75,29 @@ async def open_event(
 
 
 @router.post("/event/{event_id}/show-results", tags=["event"])
-def show_results(request, event_id: str, host_token: str):
-    event = get_object_or_404(Event, pk=event_id)
+async def show_results(
+    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+):
+    event = await aget_object_or_404(Event, pk=event_id)
 
-    if host_token != str(event.host_token):
+    if token != event.host_token:
         raise AuthorizationError
 
     event.show_results = True
-    event.save()
+    await event.asave()
 
 
 @router.post("/event/{event_id}/hide-results", tags=["event"])
-def hide_results(request, event_id: str, host_token: str):
-    event = get_object_or_404(Event, pk=event_id)
+async def hide_results(
+    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+):
+    event = await aget_object_or_404(Event, pk=event_id)
 
-    if host_token != str(event.host_token):
+    if token != event.host_token:
         raise AuthorizationError
 
     event.show_results = False
-    event.save()
+    await event.asave()
 
 
 # Ballots
