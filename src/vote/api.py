@@ -74,6 +74,32 @@ async def open_event(
     await event.asave()
 
 
+@router.post("/event/{event_id}/show-results", tags=["event"])
+async def show_results(
+    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+):
+    event = await aget_object_or_404(Event, pk=event_id)
+
+    if token != event.host_token:
+        raise AuthorizationError
+
+    event.show_results = True
+    await event.asave()
+
+
+@router.post("/event/{event_id}/hide-results", tags=["event"])
+async def hide_results(
+    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+):
+    event = await aget_object_or_404(Event, pk=event_id)
+
+    if token != event.host_token:
+        raise AuthorizationError
+
+    event.show_results = False
+    await event.asave()
+
+
 # Ballots
 @router.get("/event/{event_id}/ballots", response=List[BallotSchema], tags=["ballot"])
 async def list_ballots(
