@@ -19,5 +19,5 @@ api.add_router("/vote/", vote_router)
 
 
 @api.get("/version/", response=VersionResponse, tags=["API Info"])
-def version(request):
+async def version(request):
     return {"version": api.version}
