@@ -33,20 +33,20 @@ class EventTestCase(TestCase):
     async def test_read_event(self):
         response = await self.aclient.get(
             f"/event/{self.event.id}",
-            query_params={"token": self.event.host_token},
+            headers={"X-API-Key": self.event.host_token},
         )
         self.assertEqual(response.status_code, 200)
 
     async def test_read_event_unauthorized(self):
         response = await self.aclient.get(
-            f"/event/{self.event.id}", query_params={"token": uuid.uuid4()}
+            f"/event/{self.event.id}", headers={"X-API-Key": uuid.uuid4()}
         )
         self.assertEqual(response.status_code, 403)
 
     async def test_close_event(self):
         response = await self.aclient.post(
             f"/event/{self.event.id}/close",
-            query_params={"host_token": self.event.host_token},
+            headers={"X-API-Key": self.event.host_token},
         )
         self.assertEqual(response.status_code, 200)
 
@@ -60,7 +60,7 @@ class EventTestCase(TestCase):
 
         response = await self.aclient.post(
             f"/event/{self.event.id}/open",
-            query_params={"host_token": self.event.host_token},
+            headers={"X-API-Key": self.event.host_token},
         )
         self.assertEqual(response.status_code, 200)
 
@@ -83,9 +83,9 @@ class BallotTestCase(TestCase):
     async def test_ballot_creation(self):
         response = await self.aclient.post(
             f"/event/{self.event.id}/create-ballot",
+            headers={"X-API-Key": self.event.share_token},
             query_params={
                 "voter_name": "Don",
-                "share_token": self.event.share_token,
             },
         )
 
@@ -94,9 +94,9 @@ class BallotTestCase(TestCase):
     async def test_ballot_creation_with_duplicate_name(self):
         response = await self.aclient.post(
             f"/event/{self.event.id}/create-ballot",
+            headers={"X-API-Key": self.event.share_token},
             query_params={
                 "voter_name": "Becky",
-                "share_token": self.event.share_token,
             },
         )
         self.assertEqual(response.status_code, 422)
@@ -104,9 +104,9 @@ class BallotTestCase(TestCase):
     async def test_ballot_creation_with_bad_token(self):
         response = await self.aclient.post(
             f"/event/{self.event.id}/create-ballot",
+            headers={"X-API-Key": uuid.uuid4()},
             query_params={
                 "voter_name": "Don",
-                "share_token": uuid.uuid4(),
             },
         )
         self.assertEqual(response.status_code, 403)
@@ -114,7 +114,7 @@ class BallotTestCase(TestCase):
     async def test_ballot_submission(self):
         response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
-            query_params={"token": self.ballot.token},
+            headers={"X-API-Key": self.ballot.token},
             json={"vote": "Ed's Fusion Chili"},
         )
         self.assertEqual(response.status_code, 200)
@@ -122,14 +122,14 @@ class BallotTestCase(TestCase):
     async def test_ballot_resubmission(self):
         submission = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
-            query_params={"token": self.ballot.token},
+            headers={"X-API-Key": self.ballot.token},
             json={"vote": "Ed's Fusion Chili"},
         )
         self.assertEqual(submission.status_code, 200)
 
         resubmission = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
-            query_params={"token": self.ballot.token},
+            headers={"X-API-Key": self.ballot.token},
             json={"vote": "Tom's Texas Chili"},
         )
         self.assertEqual(resubmission.status_code, 403)
@@ -137,7 +137,7 @@ class BallotTestCase(TestCase):
     async def test_ballot_submission_with_bad_token(self):
         response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
-            query_params={"token": uuid.uuid4()},
+            headers={"X-API-Key": uuid.uuid4()},
             json={"vote": "Ed's Fusion Chili"},
         )
         self.assertEqual(response.status_code, 403)
@@ -158,7 +158,7 @@ class BallotTestCase(TestCase):
 
         response = await self.aclient.get(
             f"/event/{event.id}/ballots",
-            query_params={"token": event.host_token},
+            headers={"X-API-Key": event.host_token},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -166,7 +166,7 @@ class BallotTestCase(TestCase):
 
         response = await self.aclient.get(
             f"/event/{event.id}/ballots",
-            query_params={"token": ballot1.token},
+            headers={"X-API-Key": ballot1.token},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -197,14 +197,14 @@ class BallotTestCase(TestCase):
 
         response = await self.aclient.get(
             f"/event/{event.id}/ballots",
-            query_params={"token": event1.host_token},
+            headers={"X-API-Key": event1.host_token},
         )
 
         self.assertEqual(response.status_code, 403)
 
         response = await self.aclient.get(
             f"/event/{event.id}/ballots",
-            query_params={"token": ballot.token},
+            headers={"X-API-Key": ballot.token},
         )
 
         self.assertEqual(response.status_code, 403)
@@ -212,7 +212,7 @@ class BallotTestCase(TestCase):
     async def test_get_ballot(self):
         response = await self.aclient.get(
             f"/ballot/{self.ballot.id}",
-            query_params={"token": self.ballot.token},
+            headers={"X-API-Key": self.ballot.token},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["voter_name"], "Becky")
@@ -220,6 +220,6 @@ class BallotTestCase(TestCase):
     async def test_get_ballot_unauthorized(self):
         response = await self.aclient.get(
             f"/ballot/{self.ballot.id}",
-            query_params={"token": uuid.uuid4()},
+            headers={"X-API-Key": uuid.uuid4()},
         )
         self.assertEqual(response.status_code, 403)
