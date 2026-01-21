@@ -12,6 +12,7 @@ from vote.schemas import (
     EventCreationResponse,
     EventDetails,
     EventCreation,
+    EventStatusUpdateBody,
 )
 from .models import Event, Ballot
 from django.shortcuts import aget_object_or_404
@@ -46,6 +47,28 @@ async def read_event(
         raise AuthorizationError
 
     return event
+
+
+@router.patch("/event/{event_id}/update-status", tags=["event"])
+async def update_event_status(
+    request,
+    event_id: str,
+    body: EventStatusUpdateBody,
+    token: uuid.UUID = Header(alias="X-API-Key"),
+):
+    event = await aget_object_or_404(Event, pk=event_id)
+
+    if token != event.host_token:
+        raise AuthorizationError
+
+    event.status = body.status
+
+    if event.status == event.STATUS_CHOICES.CLOSED:
+        event.closed = datetime.now(tz=UTC)
+    else:
+        event.closed = None
+
+    await event.asave()
 
 
 @router.post("/event/{event_id}/close", tags=["event"])
