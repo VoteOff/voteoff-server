@@ -2,14 +2,13 @@ import uuid
 from django.db import models
 from django.db.models import UniqueConstraint
 
-EVENT_STATUS_CHOICES = {
-    "RE": "Registring",
-    "VO": "Voting",
-    "CL": "Closed",
-}
-
 
 class Event(models.Model):
+    class STATUS_CHOICES(models.TextChoices):
+        REGISTERING = "RE", "Registering"
+        VOTING = "VO", "Voting"
+        CLOSED = "CL", "Closed"
+
     share_token = models.UUIDField(default=uuid.uuid4, editable=False)
     host_token = models.UUIDField(default=uuid.uuid4, editable=False)
     name = models.CharField()
@@ -18,7 +17,7 @@ class Event(models.Model):
     show_results = models.BooleanField(default=False)
     closed = models.DateTimeField(null=True)
     electoral_system = models.CharField(max_length=2)
-    status = models.CharField(max_length=2, choices=EVENT_STATUS_CHOICES, default="RE")
+    status = models.CharField(max_length=2, choices=STATUS_CHOICES, default="RE")
 
 
 class Ballot(models.Model):
