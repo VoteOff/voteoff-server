@@ -53,6 +53,7 @@ class EventTestCase(TestCase):
         event = await Event.objects.aget(pk=self.event.id)
 
         self.assertIsNotNone(event.closed)
+        self.assertEqual(event.status, event.STATUS_CHOICES.CLOSED)
 
     async def test_open_event(self):
         self.event.closed = datetime.now(timezone.utc)
@@ -67,6 +68,7 @@ class EventTestCase(TestCase):
         event = await Event.objects.aget(pk=self.event.id)
 
         self.assertIsNone(event.closed)
+        self.assertEqual(event.status, event.STATUS_CHOICES.VOTING)
 
 
 class BallotTestCase(TestCase):

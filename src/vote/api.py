@@ -58,6 +58,7 @@ async def close_event(
         raise AuthorizationError
 
     event.closed = datetime.now(tz=UTC)
+    event.status = event.STATUS_CHOICES.CLOSED
     await event.asave()
 
 
@@ -71,6 +72,7 @@ async def open_event(
         raise AuthorizationError
 
     event.closed = None
+    event.status = event.STATUS_CHOICES.VOTING
     await event.asave()
 
 
