@@ -1,9 +1,13 @@
 from datetime import datetime
-from typing import Any, List
+from typing import Any, List, Literal
 import uuid
 from ninja import ModelSchema, Schema
 
 from vote.models import Ballot
+
+
+class EventStatusUpdateBody(Schema):
+    status: Literal["OP", "CL", "VO"]
 
 
 class EventCreation(Schema):
