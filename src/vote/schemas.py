@@ -5,9 +5,11 @@ from ninja import ModelSchema, Schema
 
 from vote.models import Ballot
 
+type EventStatus = Literal["RE", "CL", "VO"]
+
 
 class EventStatusUpdateBody(Schema):
-    status: Literal["OP", "CL", "VO"]
+    status: EventStatus
 
 
 class EventCreation(Schema):
@@ -19,6 +21,7 @@ class EventCreation(Schema):
 class EventDetails(EventCreation):
     id: int
     closed: datetime | None
+    status: EventStatus
     share_token: uuid.UUID
     show_results: bool
 
