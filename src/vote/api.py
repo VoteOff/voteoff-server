@@ -186,16 +186,6 @@ async def submit_ballot(
     return ballot
 
 
-@router.get("/ballot/from-token", response=BallotSchema, tags=["ballot"])
-def get_ballot_form_token(request, token: uuid.UUID = Header(alias="X-API-Key")):
-    ballots = Ballot.objects.filter(token=token)
-
-    if ballots.count() == 0:
-        raise Http404("Ballot not found")
-    else:
-        return ballots.first()
-
-
 @router.get("/ballot/{ballot_id}", response=BallotSchema, tags=["ballot"])
 async def get_ballot(
     request, ballot_id: int, token: uuid.UUID = Header(alias="X-API-Key")
