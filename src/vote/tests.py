@@ -114,12 +114,15 @@ class BallotTestCase(TestCase):
         self.assertEqual(response.status_code, 403)
 
     async def test_ballot_submission(self):
+        vote = "Ed's Fusion Chili"
+
         response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
             headers={"X-API-Key": self.ballot.token},
-            json={"vote": "Ed's Fusion Chili"},
+            json={"vote": vote},
         )
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["vote"], vote)
 
     async def test_ballot_resubmission(self):
         submission = await self.aclient.post(

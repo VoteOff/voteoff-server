@@ -18,6 +18,6 @@ api.add_router("/vote/", vote_router)
 # Add more routers as needed
 
 
-@api.get("/version/", response=VersionResponse, tags=["API Info"])
+@api.get("/version", response=VersionResponse, tags=["API Info"])
 async def version(request):
     return {"version": api.version}

@@ -165,7 +165,7 @@ async def create_ballot(
     return {"ballot_id": ballot.id, "ballot_token": ballot.token}
 
 
-@router.post("/ballot/{ballot_id}/submit", tags=["ballot"])
+@router.post("/ballot/{ballot_id}/submit", response=BallotSchema, tags=["ballot"])
 async def submit_ballot(
     request,
     ballot_id: int,
@@ -182,6 +182,8 @@ async def submit_ballot(
     ballot.vote = payload.vote
     ballot.submitted = datetime.now(tz=UTC)
     await ballot.asave()
+
+    return ballot
 
 
 @router.get("/ballot/from-token", response=BallotSchema, tags=["ballot"])
