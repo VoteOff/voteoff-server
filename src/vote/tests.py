@@ -72,7 +72,8 @@ class EventTestCase(TestCase):
 
 
 class BallotTestCase(TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpTestData(self):
         self.client = TestClient(router)
         self.aclient = TestAsyncClient(router)
         self.event = Event.objects.create(
@@ -113,7 +114,35 @@ class BallotTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    async def test_ballot_creation_with_wrong_event_status(self):
+        self.event.status = "VO"
+        await self.event.asave()
+
+        response = await self.aclient.post(
+            f"/event/{self.event.id}/create-ballot",
+            headers={"X-API-Key": self.event.share_token},
+            query_params={
+                "voter_name": "Don",
+            },
+        )
+        self.assertEqual(response.status_code, 409)
+
+        self.event.status = "CL"
+        await self.event.asave()
+
+        response = await self.aclient.post(
+            f"/event/{self.event.id}/create-ballot",
+            headers={"X-API-Key": self.event.share_token},
+            query_params={
+                "voter_name": "Don",
+            },
+        )
+        self.assertEqual(response.status_code, 409)
+
     async def test_ballot_submission(self):
+        self.event.status = "VO"
+        await self.event.asave()
+
         vote = "Ed's Fusion Chili"
 
         response = await self.aclient.post(
@@ -125,6 +154,9 @@ class BallotTestCase(TestCase):
         self.assertTrue(response.json()["vote"], vote)
 
     async def test_ballot_resubmission(self):
+        self.event.status = "VO"
+        await self.event.asave()
+
         submission = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
             headers={"X-API-Key": self.ballot.token},
@@ -137,9 +169,12 @@ class BallotTestCase(TestCase):
             headers={"X-API-Key": self.ballot.token},
             json={"vote": "Tom's Texas Chili"},
         )
-        self.assertEqual(resubmission.status_code, 403)
+        self.assertEqual(resubmission.status_code, 409)
 
     async def test_ballot_submission_with_bad_token(self):
+        self.event.status = "VO"
+        await self.event.asave()
+
         response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
             headers={"X-API-Key": uuid.uuid4()},
@@ -147,11 +182,30 @@ class BallotTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    async def test_ballot_with_wrong_event_status(self):
+        response = await self.aclient.post(
+            f"/ballot/{self.ballot.id}/submit",
+            headers={"X-API-Key": self.ballot.token},
+            json={"vote": "Ed's Fusion Chili"},
+        )
+        self.assertEqual(response.status_code, 409)
+
+        self.event.status = "CL"
+        await self.event.asave()
+        response = await self.aclient.post(
+            f"/ballot/{self.ballot.id}/submit",
+            headers={"X-API-Key": self.ballot.token},
+            json={"vote": "Tom's Texas Chili"},
+        )
+        self.assertEqual(response.status_code, 409)
+
     async def test_ballot_list(self):
         event = Event(
             name="Small Cookoff",
             choices=["Chilli 1", "Chilli 2", "Chilli 3"],
             electoral_system="PL",
+            status="CL",
+            show_results=True,
         )
         await event.asave()
         ballot1 = Ballot(event=event, voter_name="Bob")
@@ -210,6 +264,44 @@ class BallotTestCase(TestCase):
         response = await self.aclient.get(
             f"/event/{event.id}/ballots",
             headers={"X-API-Key": ballot.token},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    async def test_ballot_list_for_voter_event_not_closed(self):
+        # TODO: Seperate out into individual tests
+        event = Event(
+            name="Small Cookoff",
+            choices=["Chilli 1", "Chilli 2", "Chilli 3"],
+            electoral_system="PL",
+            status="RE",
+            show_results=True,
+        )
+        await event.asave()
+        ballot1 = Ballot(event=event, voter_name="Bob")
+        await ballot1.asave()
+
+        response = await self.aclient.get(
+            f"/event/{event.id}/ballots",
+            headers={"X-API-Key": event.host_token},
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        response = await self.aclient.get(
+            f"/event/{event.id}/ballots",
+            headers={"X-API-Key": ballot1.token},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+        event.status = "CL"
+        event.show_results = False
+        await event.asave()
+
+        response = await self.aclient.get(
+            f"/event/{event.id}/ballots",
+            headers={"X-API-Key": ballot1.token},
         )
 
         self.assertEqual(response.status_code, 403)

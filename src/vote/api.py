@@ -2,9 +2,8 @@ from datetime import datetime, UTC
 from typing import List
 
 from django.db import IntegrityError
-from django.http import Http404
 from ninja import Header, Router
-from ninja.errors import AuthorizationError, ValidationError
+from ninja.errors import AuthorizationError, ValidationError, HttpError
 
 from vote.schemas import (
     BallotSchema,
@@ -137,6 +136,11 @@ async def list_ballots(
     ]:
         raise AuthorizationError
 
+    if token != event.host_token and (
+        event.status != "CL" or (event.status == "CL" and event.show_results is False)
+    ):
+        raise AuthorizationError
+
     return [x async for x in event.ballot_set.all().order_by("created", "submitted")]
 
 
@@ -151,6 +155,9 @@ async def create_ballot(
 
     if share_token != event.share_token:
         raise AuthorizationError
+
+    if event.status != "RE":
+        raise HttpError(409, "Cannot create ballot at this time")
 
     ballot = Ballot(event=event, voter_name=voter_name)
 
@@ -172,12 +179,18 @@ async def submit_ballot(
     payload: BallotSubmission,
     token: uuid.UUID = Header(alias="X-API-Key"),
 ):
-    ballot = await aget_object_or_404(Ballot, pk=ballot_id)
+    ballot = await aget_object_or_404(
+        Ballot.objects.prefetch_related("event"), pk=ballot_id
+    )
+
+    if ballot.event.status != "VO":
+        raise HttpError(409, "Event is not accepting ballots.")
+
     if token != ballot.token:
         raise AuthorizationError
 
     if ballot.submitted is not None:
-        raise AuthorizationError
+        raise HttpError(409, "Ballot already submitted.")
 
     ballot.vote = payload.vote
     ballot.submitted = datetime.now(tz=UTC)
@@ -190,10 +203,9 @@ async def submit_ballot(
 async def get_ballot(
     request, ballot_id: int, token: uuid.UUID = Header(alias="X-API-Key")
 ):
-    try:
-        ballot = await Ballot.objects.prefetch_related("event").aget(pk=ballot_id)
-    except Ballot.DoesNotExist:
-        raise Http404("Ballot not found")
+    ballot = await aget_object_or_404(
+        Ballot.objects.prefetch_related("event"), pk=ballot_id
+    )
 
     if token != ballot.token and token != ballot.event.host_token:
         raise AuthorizationError
