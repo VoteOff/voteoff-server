@@ -12,6 +12,7 @@ from vote.schemas import (
     EventDetails,
     EventCreation,
     EventStatusUpdateBody,
+    EventCloseResponse,
 )
 from .models import Event, Ballot
 from django.shortcuts import aget_object_or_404
@@ -26,6 +27,8 @@ async def create_event(request, payload: EventCreation):
         name=payload.name,
         choices=payload.choices,
         electoral_system=payload.electoral_system,
+        allow_registration=payload.allow_registration,
+        allow_voting=payload.allow_voting,
     )
     await event.asave()
 
@@ -48,8 +51,12 @@ async def read_event(
     return event
 
 
-@router.patch("/event/{event_id}/update-status", tags=["event"])
-async def update_event_status(
+@router.patch(
+    "/event/{event_id}/update",
+    response={200: EventCreationResponse},
+    tags=["event"],
+)
+async def update_event(
     request,
     event_id: str,
     body: EventStatusUpdateBody,
@@ -60,17 +67,19 @@ async def update_event_status(
     if token != event.host_token:
         raise AuthorizationError
 
-    event.status = body.status
+    if body.allow_registration is not None:
+        event.allow_registration = body.allow_registration
 
-    if event.status == event.STATUS_CHOICES.CLOSED:
-        event.closed = datetime.now(tz=UTC)
-    else:
-        event.closed = None
+    if body.allow_voting is not None:
+        event.allow_voting = body.allow_voting
 
     await event.asave()
+    return event
 
 
-@router.post("/event/{event_id}/close", tags=["event"])
+@router.post(
+    "/event/{event_id}/close", response={200: EventCloseResponse}, tags=["event"]
+)
 async def close_event(
     request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
 ):
@@ -80,8 +89,11 @@ async def close_event(
         raise AuthorizationError
 
     event.closed = datetime.now(tz=UTC)
-    event.status = event.STATUS_CHOICES.CLOSED
+    event.allow_registration = False
+    event.allow_voting = False
     await event.asave()
+
+    return EventCloseResponse(closed=event.closed)
 
 
 @router.post("/event/{event_id}/open", tags=["event"])
@@ -94,7 +106,6 @@ async def open_event(
         raise AuthorizationError
 
     event.closed = None
-    event.status = event.STATUS_CHOICES.VOTING
     await event.asave()
 
 
@@ -137,7 +148,7 @@ async def list_ballots(
         raise AuthorizationError
 
     if token != event.host_token and (
-        event.status != "CL" or (event.status == "CL" and event.show_results is False)
+        event.closed is None or (event.closed and event.show_results is False)
     ):
         raise AuthorizationError
 
@@ -156,7 +167,7 @@ async def create_ballot(
     if share_token != event.share_token:
         raise AuthorizationError
 
-    if event.status != "RE":
+    if not event.allow_registration:
         raise HttpError(409, "Cannot create ballot at this time")
 
     ballot = Ballot(event=event, voter_name=voter_name)
@@ -183,7 +194,7 @@ async def submit_ballot(
         Ballot.objects.prefetch_related("event"), pk=ballot_id
     )
 
-    if ballot.event.status != "VO":
+    if ballot.event.allow_voting is False:
         raise HttpError(409, "Event is not accepting ballots.")
 
     if token != ballot.token:
