@@ -1,6 +1,6 @@
 import uuid
 from django.db import models
-from django.db.models import F, Case, UniqueConstraint, Value, When
+from django.db.models import Case, UniqueConstraint, Value, When
 
 status_expr = Case(
     When(allow_registration=True, allow_voting=False, then=Value("RE")),
