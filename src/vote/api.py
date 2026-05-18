@@ -12,6 +12,7 @@ from vote.schemas import (
     EventDetails,
     EventCreation,
     EventStatusUpdateBody,
+    EventCloseResponse,
 )
 from .models import Event, Ballot
 from django.shortcuts import aget_object_or_404
@@ -26,6 +27,8 @@ async def create_event(request, payload: EventCreation):
         name=payload.name,
         choices=payload.choices,
         electoral_system=payload.electoral_system,
+        allow_registration=payload.allow_registration,
+        allow_voting=payload.allow_voting,
     )
     await event.asave()
 
@@ -48,8 +51,12 @@ async def read_event(
     return event
 
 
-@router.patch("/event/{event_id}/update-status", tags=["event"])
-async def update_event_status(
+@router.patch(
+    "/event/{event_id}/update",
+    response={200: EventCreationResponse},
+    tags=["event"],
+)
+async def update_event(
     request,
     event_id: str,
     body: EventStatusUpdateBody,
@@ -67,9 +74,12 @@ async def update_event_status(
         event.allow_voting = body.allow_voting
 
     await event.asave()
+    return event
 
 
-@router.post("/event/{event_id}/close", tags=["event"])
+@router.post(
+    "/event/{event_id}/close", response={200: EventCloseResponse}, tags=["event"]
+)
 async def close_event(
     request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
 ):
@@ -82,6 +92,8 @@ async def close_event(
     event.allow_registration = False
     event.allow_voting = False
     await event.asave()
+
+    return EventCloseResponse(closed=event.closed)
 
 
 @router.post("/event/{event_id}/open", tags=["event"])

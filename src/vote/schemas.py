@@ -17,6 +17,8 @@ class EventCreation(Schema):
     name: str
     choices: List[str]
     electoral_system: str
+    allow_registration: bool = False
+    allow_voting: bool = False
 
 
 class EventDetails(EventCreation):
@@ -26,6 +28,10 @@ class EventDetails(EventCreation):
     allow_voting: bool
     share_token: uuid.UUID
     show_results: bool
+
+
+class EventCloseResponse(Schema):
+    closed: datetime
 
 
 class EventCreationResponse(EventDetails):
