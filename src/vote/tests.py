@@ -80,6 +80,7 @@ class BallotTestCase(TestCase):
             name="Big Cookoff",
             choices=["Tom's Texas Chili", "Jim's Vegan Chili", "Ed's Fusion Chili"],
             electoral_system="PL",
+            allow_registration=True,
         )
         self.ballot = Ballot.objects.create(event=self.event, voter_name="Becky")
 
@@ -115,7 +116,8 @@ class BallotTestCase(TestCase):
         self.assertEqual(response.status_code, 403)
 
     async def test_ballot_creation_with_wrong_event_status(self):
-        self.event.status = "VO"
+        self.event.allow_registration = False
+        self.event.allow_voting = True
         await self.event.asave()
 
         response = await self.aclient.post(
@@ -127,7 +129,8 @@ class BallotTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 409)
 
-        self.event.status = "CL"
+        self.event.allow_registration = False
+        self.event.allow_voting = False
         await self.event.asave()
 
         response = await self.aclient.post(
@@ -140,7 +143,8 @@ class BallotTestCase(TestCase):
         self.assertEqual(response.status_code, 409)
 
     async def test_ballot_submission(self):
-        self.event.status = "VO"
+        self.event.allow_registration = False
+        self.event.allow_voting = True
         await self.event.asave()
 
         vote = "Ed's Fusion Chili"
@@ -154,7 +158,8 @@ class BallotTestCase(TestCase):
         self.assertTrue(response.json()["vote"], vote)
 
     async def test_ballot_resubmission(self):
-        self.event.status = "VO"
+        self.event.allow_registration = False
+        self.event.allow_voting = True
         await self.event.asave()
 
         submission = await self.aclient.post(
@@ -172,7 +177,8 @@ class BallotTestCase(TestCase):
         self.assertEqual(resubmission.status_code, 409)
 
     async def test_ballot_submission_with_bad_token(self):
-        self.event.status = "VO"
+        self.event.allow_registration = False
+        self.event.allow_voting = True
         await self.event.asave()
 
         response = await self.aclient.post(
@@ -190,7 +196,8 @@ class BallotTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 409)
 
-        self.event.status = "CL"
+        self.event.allow_registration = False
+        self.event.allow_voting = False
         await self.event.asave()
         response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
@@ -204,7 +211,8 @@ class BallotTestCase(TestCase):
             name="Small Cookoff",
             choices=["Chilli 1", "Chilli 2", "Chilli 3"],
             electoral_system="PL",
-            status="CL",
+            allow_registration=False,
+            allow_voting=False,
             show_results=True,
         )
         await event.asave()
@@ -274,8 +282,9 @@ class BallotTestCase(TestCase):
             name="Small Cookoff",
             choices=["Chilli 1", "Chilli 2", "Chilli 3"],
             electoral_system="PL",
-            status="RE",
             show_results=True,
+            allow_registration=True,
+            allow_voting=False,
         )
         await event.asave()
         ballot1 = Ballot(event=event, voter_name="Bob")
@@ -295,7 +304,8 @@ class BallotTestCase(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-        event.status = "CL"
+        event.allow_registration = False
+        event.allow_voting = False
         event.show_results = False
         await event.asave()
 

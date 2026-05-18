@@ -60,11 +60,18 @@ async def update_event_status(
     if token != event.host_token:
         raise AuthorizationError
 
-    event.status = body.status
-
     if event.status == event.STATUS_CHOICES.CLOSED:
         event.closed = datetime.now(tz=UTC)
-    else:
+        event.allow_registration = False
+        event.allow_voting = False
+    elif event.status == event.STATUS_CHOICES.VOTING:
+        event.allow_registration = False
+        event.allow_voting = True
+    elif event.status == event.STATUS_CHOICES.REGISTERING:
+        event.allow_registration = True
+        event.allow_voting = False
+
+    if event.status != event.STATUS_CHOICES.CLOSED:
         event.closed = None
 
     await event.asave()
@@ -80,7 +87,8 @@ async def close_event(
         raise AuthorizationError
 
     event.closed = datetime.now(tz=UTC)
-    event.status = event.STATUS_CHOICES.CLOSED
+    event.allow_registration = False
+    event.allow_voting = False
     await event.asave()
 
 
@@ -94,7 +102,7 @@ async def open_event(
         raise AuthorizationError
 
     event.closed = None
-    event.status = event.STATUS_CHOICES.VOTING
+    event.allow_voting = True
     await event.asave()
 
 
