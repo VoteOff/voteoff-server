@@ -44,6 +44,9 @@ class EventTestCase(TestCase):
         self.assertEqual(response.status_code, 403)
 
     async def test_close_event(self):
+        self.event.allow_registration = True
+        await self.event.asave()
+
         response = await self.aclient.post(
             f"/event/{self.event.id}/close",
             headers={"X-API-Key": self.event.host_token},
@@ -53,7 +56,8 @@ class EventTestCase(TestCase):
         event = await Event.objects.aget(pk=self.event.id)
 
         self.assertIsNotNone(event.closed)
-        self.assertEqual(event.status, event.STATUS_CHOICES.CLOSED)
+        self.assertFalse(event.allow_registration)
+        self.assertFalse(event.allow_voting)
 
     async def test_open_event(self):
         self.event.closed = datetime.now(timezone.utc)
@@ -68,7 +72,8 @@ class EventTestCase(TestCase):
         event = await Event.objects.aget(pk=self.event.id)
 
         self.assertIsNone(event.closed)
-        self.assertEqual(event.status, event.STATUS_CHOICES.VOTING)
+        self.assertFalse(event.allow_registration)
+        self.assertFalse(event.allow_voting)
 
 
 class BallotTestCase(TestCase):
@@ -213,6 +218,7 @@ class BallotTestCase(TestCase):
             electoral_system="PL",
             allow_registration=False,
             allow_voting=False,
+            closed=datetime.now(timezone.utc),
             show_results=True,
         )
         await event.asave()

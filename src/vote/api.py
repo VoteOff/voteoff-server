@@ -60,19 +60,11 @@ async def update_event_status(
     if token != event.host_token:
         raise AuthorizationError
 
-    if event.status == event.STATUS_CHOICES.CLOSED:
-        event.closed = datetime.now(tz=UTC)
-        event.allow_registration = False
-        event.allow_voting = False
-    elif event.status == event.STATUS_CHOICES.VOTING:
-        event.allow_registration = False
-        event.allow_voting = True
-    elif event.status == event.STATUS_CHOICES.REGISTERING:
-        event.allow_registration = True
-        event.allow_voting = False
+    if body.allow_registration is not None:
+        event.allow_registration = body.allow_registration
 
-    if event.status != event.STATUS_CHOICES.CLOSED:
-        event.closed = None
+    if body.allow_voting is not None:
+        event.allow_voting = body.allow_voting
 
     await event.asave()
 
@@ -102,7 +94,6 @@ async def open_event(
         raise AuthorizationError
 
     event.closed = None
-    event.allow_voting = True
     await event.asave()
 
 
@@ -145,7 +136,7 @@ async def list_ballots(
         raise AuthorizationError
 
     if token != event.host_token and (
-        event.status != "CL" or (event.status == "CL" and event.show_results is False)
+        event.closed is None or (event.closed and event.show_results is False)
     ):
         raise AuthorizationError
 
@@ -164,7 +155,7 @@ async def create_ballot(
     if share_token != event.share_token:
         raise AuthorizationError
 
-    if event.status != "RE":
+    if not event.allow_registration:
         raise HttpError(409, "Cannot create ballot at this time")
 
     ballot = Ballot(event=event, voter_name=voter_name)
@@ -191,7 +182,7 @@ async def submit_ballot(
         Ballot.objects.prefetch_related("event"), pk=ballot_id
     )
 
-    if ballot.event.status != "VO":
+    if ballot.event.allow_voting is False:
         raise HttpError(409, "Event is not accepting ballots.")
 
     if token != ballot.token:

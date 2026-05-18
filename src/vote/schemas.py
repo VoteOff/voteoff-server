@@ -9,7 +9,8 @@ type EventStatus = Literal["RE", "CL", "VO"]
 
 
 class EventStatusUpdateBody(Schema):
-    status: EventStatus
+    allow_registration: bool | None = None
+    allow_voting: bool | None = None
 
 
 class EventCreation(Schema):
@@ -21,7 +22,8 @@ class EventCreation(Schema):
 class EventDetails(EventCreation):
     id: int
     closed: datetime | None
-    status: EventStatus
+    allow_registration: bool
+    allow_voting: bool
     share_token: uuid.UUID
     show_results: bool
 
