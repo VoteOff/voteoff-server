@@ -11,6 +11,7 @@ type EventStatus = Literal["RE", "CL", "VO"]
 class EventStatusUpdateBody(Schema):
     allow_registration: bool | None = None
     allow_voting: bool | None = None
+    show_results: bool | None = None
 
 
 class EventCreation(Schema):

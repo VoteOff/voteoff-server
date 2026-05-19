@@ -2,78 +2,8 @@ from datetime import datetime, timezone
 import uuid
 from django.test import TestCase
 from ninja.testing import TestClient, TestAsyncClient
-from .models import Event, Ballot
-from .api import router
-
-
-class EventTestCase(TestCase):
-    def setUp(self):
-        self.aclient = TestAsyncClient(router)
-        self.event = Event.objects.create(
-            name="Big Cookoff",
-            choices=["Tom's Texas Chili", "Jim's Vegan Chili", "Ed's Fusion Chili"],
-            electoral_system="PL",
-        )
-
-    async def test_create_event(self):
-        response = await self.aclient.post(
-            "/event/create",
-            json={
-                "name": "Big Cookoff",
-                "choices": [
-                    "Tom's Texas Chili",
-                    "Jim's Vegan Chili",
-                    "Ed's Fusion Chili",
-                ],
-                "electoral_system": "RC",
-            },
-        )
-        self.assertEqual(response.status_code, 201)
-
-    async def test_read_event(self):
-        response = await self.aclient.get(
-            f"/event/{self.event.id}",
-            headers={"X-API-Key": self.event.host_token},
-        )
-        self.assertEqual(response.status_code, 200)
-
-    async def test_read_event_unauthorized(self):
-        response = await self.aclient.get(
-            f"/event/{self.event.id}", headers={"X-API-Key": uuid.uuid4()}
-        )
-        self.assertEqual(response.status_code, 403)
-
-    async def test_close_event(self):
-        self.event.allow_registration = True
-        await self.event.asave()
-
-        response = await self.aclient.post(
-            f"/event/{self.event.id}/close",
-            headers={"X-API-Key": self.event.host_token},
-        )
-        self.assertEqual(response.status_code, 200)
-
-        event = await Event.objects.aget(pk=self.event.id)
-
-        self.assertIsNotNone(event.closed)
-        self.assertFalse(event.allow_registration)
-        self.assertFalse(event.allow_voting)
-
-    async def test_open_event(self):
-        self.event.closed = datetime.now(timezone.utc)
-        await self.event.asave()
-
-        response = await self.aclient.post(
-            f"/event/{self.event.id}/open",
-            headers={"X-API-Key": self.event.host_token},
-        )
-        self.assertEqual(response.status_code, 200)
-
-        event = await Event.objects.aget(pk=self.event.id)
-
-        self.assertIsNone(event.closed)
-        self.assertFalse(event.allow_registration)
-        self.assertFalse(event.allow_voting)
+from ..models import Event, Ballot
+from ..api import router
 
 
 class BallotTestCase(TestCase):
@@ -193,7 +123,11 @@ class BallotTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    async def test_ballot_with_wrong_event_status(self):
+    async def test_ballot_submission_when_voting_not_allowed(self):
+        self.event.allow_registration = False
+        self.event.allow_voting = False
+        await self.event.asave()
+
         response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
             headers={"X-API-Key": self.ballot.token},
@@ -201,13 +135,16 @@ class BallotTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 409)
 
+    async def test_ballot_submission_when_event_closed(self):
         self.event.allow_registration = False
-        self.event.allow_voting = False
+        self.event.allow_voting = True
+        self.event.closed = datetime.now(timezone.utc)
         await self.event.asave()
+
         response = await self.aclient.post(
             f"/ballot/{self.ballot.id}/submit",
             headers={"X-API-Key": self.ballot.token},
-            json={"vote": "Tom's Texas Chili"},
+            json={"vote": "Ed's Fusion Chili"},
         )
         self.assertEqual(response.status_code, 409)
 
@@ -330,7 +267,15 @@ class BallotTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["voter_name"], "Becky")
 
-    async def test_get_ballot_unauthorized(self):
+    async def test_get_ballot_with_event_host_token(self):
+        response = await self.aclient.get(
+            f"/ballot/{self.ballot.id}",
+            headers={"X-API-Key": self.event.host_token},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["voter_name"], "Becky")
+
+    async def test_get_ballot_random_token(self):
         response = await self.aclient.get(
             f"/ballot/{self.ballot.id}",
             headers={"X-API-Key": uuid.uuid4()},

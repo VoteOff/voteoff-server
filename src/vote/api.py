@@ -36,7 +36,7 @@ async def create_event(request, payload: EventCreation):
 
 
 @router.get("/event/{event_id}", response=EventDetails, tags=["event"])
-async def read_event(
+async def get_event(
     request, event_id: int, token: uuid.UUID = Header(alias="X-API-Key")
 ):
     event = await aget_object_or_404(Event, pk=event_id)
@@ -52,11 +52,11 @@ async def read_event(
 
 
 @router.patch(
-    "/event/{event_id}/update",
+    "/event/{event_id}",
     response={200: EventCreationResponse},
     tags=["event"],
 )
-async def update_event(
+async def patch_event(
     request,
     event_id: str,
     body: EventStatusUpdateBody,
@@ -72,6 +72,9 @@ async def update_event(
 
     if body.allow_voting is not None:
         event.allow_voting = body.allow_voting
+
+    if body.show_results is not None:
+        event.show_results = body.show_results
 
     await event.asave()
     return event
@@ -96,65 +99,7 @@ async def close_event(
     return EventCloseResponse(closed=event.closed)
 
 
-@router.post("/event/{event_id}/open", tags=["event"])
-async def open_event(
-    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
-):
-    event = await aget_object_or_404(Event, pk=event_id)
-
-    if token != event.host_token:
-        raise AuthorizationError
-
-    event.closed = None
-    await event.asave()
-
-
-@router.post("/event/{event_id}/show-results", tags=["event"])
-async def show_results(
-    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
-):
-    event = await aget_object_or_404(Event, pk=event_id)
-
-    if token != event.host_token:
-        raise AuthorizationError
-
-    event.show_results = True
-    await event.asave()
-
-
-@router.post("/event/{event_id}/hide-results", tags=["event"])
-async def hide_results(
-    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
-):
-    event = await aget_object_or_404(Event, pk=event_id)
-
-    if token != event.host_token:
-        raise AuthorizationError
-
-    event.show_results = False
-    await event.asave()
-
-
 # Ballots
-@router.get("/event/{event_id}/ballots", response=List[BallotSchema], tags=["ballot"])
-async def list_ballots(
-    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
-):
-    event = await aget_object_or_404(Event, pk=event_id)
-
-    if token != event.host_token and token not in [
-        x.token async for x in event.ballot_set.all()
-    ]:
-        raise AuthorizationError
-
-    if token != event.host_token and (
-        event.closed is None or (event.closed and event.show_results is False)
-    ):
-        raise AuthorizationError
-
-    return [x async for x in event.ballot_set.all().order_by("created", "submitted")]
-
-
 @router.post("/event/{event_id}/create-ballot", tags=["ballot"])
 async def create_ballot(
     request,
@@ -194,7 +139,7 @@ async def submit_ballot(
         Ballot.objects.prefetch_related("event"), pk=ballot_id
     )
 
-    if ballot.event.allow_voting is False:
+    if ballot.event.allow_voting is False or ballot.event.closed is not None:
         raise HttpError(409, "Event is not accepting ballots.")
 
     if token != ballot.token:
@@ -208,6 +153,25 @@ async def submit_ballot(
     await ballot.asave()
 
     return ballot
+
+
+@router.get("/event/{event_id}/ballots", response=List[BallotSchema], tags=["ballot"])
+async def list_ballots(
+    request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
+):
+    event = await aget_object_or_404(Event, pk=event_id)
+
+    if token != event.host_token and token not in [
+        x.token async for x in event.ballot_set.all()
+    ]:
+        raise AuthorizationError
+
+    if token != event.host_token and (
+        event.closed is None or (event.closed and event.show_results is False)
+    ):
+        raise AuthorizationError
+
+    return [x async for x in event.ballot_set.all().order_by("created", "submitted")]
 
 
 @router.get("/ballot/{ballot_id}", response=BallotSchema, tags=["ballot"])
