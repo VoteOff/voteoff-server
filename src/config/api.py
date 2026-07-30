@@ -1,9 +1,9 @@
+from django.conf import settings
 from ninja import NinjaAPI
 
 from user.api import router as user_router
 from vote.api import router as vote_router
 
-from django.conf import settings
 from .schema import VersionResponse
 
 api = NinjaAPI(
