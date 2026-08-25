@@ -89,7 +89,7 @@ DATABASES = {
         "PORT": env("DJANGO_DB_PORT", 15432),
         "USER": env("DJANGO_DB_USER", "voteoff"),
         "PASSWORD": env("DJANGO_DB_PASSWORD", "voteoff"),
-        "OPTIONS": { "sslmode": env("DJANGO_DB_SSL_MODE", "disable") },
+        "OPTIONS": { "sslmode": env("DJANGO_DB_SSL_MODE", "prefer") },
     }
 }
 
