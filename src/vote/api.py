@@ -1,22 +1,23 @@
-from datetime import datetime, UTC
-from typing import List
+import uuid
+from datetime import UTC, datetime
 
 from django.db import IntegrityError
+from django.shortcuts import aget_object_or_404
 from ninja import Header, Router
-from ninja.errors import AuthorizationError, ValidationError, HttpError
+from ninja.errors import AuthorizationError, HttpError, ValidationError
 
 from vote.schemas import (
     BallotSchema,
     BallotSubmission,
+    CreateBallotSchema,
+    EventCloseResponse,
+    EventCreation,
     EventCreationResponse,
     EventDetails,
-    EventCreation,
     EventStatusUpdateBody,
-    EventCloseResponse,
 )
-from .models import Event, Ballot
-from django.shortcuts import aget_object_or_404
-import uuid
+
+from .models import Ballot, Event
 
 router = Router()
 
@@ -100,7 +101,9 @@ async def close_event(
 
 
 # Ballots
-@router.post("/event/{event_id}/create-ballot", tags=["ballot"])
+@router.post(
+    "/event/{event_id}/create-ballot", response=CreateBallotSchema, tags=["ballot"]
+)
 async def create_ballot(
     request,
     event_id: str,
@@ -125,7 +128,7 @@ async def create_ballot(
         else:
             raise err
 
-    return {"ballot_id": ballot.id, "ballot_token": ballot.token}
+    return ballot
 
 
 @router.post("/ballot/{ballot_id}/submit", response=BallotSchema, tags=["ballot"])
@@ -155,7 +158,7 @@ async def submit_ballot(
     return ballot
 
 
-@router.get("/event/{event_id}/ballots", response=List[BallotSchema], tags=["ballot"])
+@router.get("/event/{event_id}/ballots", response=list[BallotSchema], tags=["ballot"])
 async def list_ballots(
     request, event_id: str, token: uuid.UUID = Header(alias="X-API-Key")
 ):

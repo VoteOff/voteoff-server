@@ -45,5 +45,11 @@ class BallotSchema(ModelSchema):
         fields = ["id", "voter_name", "vote", "created", "submitted"]
 
 
+class CreateBallotSchema(ModelSchema):
+    class Meta:
+        model = Ballot
+        fields = ["id", "voter_name", "vote", "created", "submitted", "token"]
+
+
 class BallotSubmission(Schema):
     vote: Any
